@@ -22,7 +22,6 @@ function App() {
         <button onClick={() => setCount(count + 1)}>
           count is {count}
         </button>
-        <br />
         <TicTacToe />
         <p>
           Edit <code>src/App.tsx</code> and save to test HMR
