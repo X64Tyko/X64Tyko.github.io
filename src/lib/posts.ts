@@ -51,9 +51,15 @@ export function seriesSlug(name: string): string {
     .replace(/^-+|-+$/g, '');
 }
 
-/** Every series and its posts, drafts included, each list in reading order. */
+/**
+ * Every series and the posts in it, in reading order.
+ *
+ * Visible posts only. Drafts are reachable by URL but must not be listed, and
+ * a series page is a listing, so pulling from getAllPosts here would print
+ * draft titles and descriptions on a public page.
+ */
 export async function getSeriesMap(): Promise<Map<string, Post[]>> {
-  const posts = await getAllPosts();
+  const posts = await getVisiblePosts();
   const map = new Map<string, Post[]>();
 
   for (const post of posts) {
