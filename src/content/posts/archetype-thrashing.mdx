@@ -1,0 +1,36 @@
+---
+title: 'What a Structural Change Actually Costs'
+description: >-
+  Adding or removing a component moves an entity between tables. Here is what
+  that move does in Flecs and Unity DOTS, and how to measure it before you
+  build a state machine out of it.
+date: 2026-09-25
+area: 'engineering'
+tags: ['ecs', 'performance', 'cpp', 'data-oriented-design']
+series: 'Design Space'
+draft: true
+---
+
+{/*
+  STUB. Design Space register: mechanism and measurement, not complaint.
+
+  This is the promoted version of the "structural change as a state machine"
+  bullet in the Code Critical ECS post. Once this exists, shrink that bullet
+  to a sentence that links here, which also solves the note about that list
+  being too long.
+*/}
+
+{/* TODO: sections to write
+
+  - What the move is. Source table, destination table, per-component memcpy,
+    the hole left behind and how it is filled (swap-and-pop vs. compaction).
+  - Deferred vs. immediate. Command buffers, sync points, and why deferring
+    changes the cost profile rather than removing it.
+  - Flecs specifics, from public docs and source.
+  - Unity DOTS specifics: EntityCommandBuffer, structural change sync points,
+    and why they invalidate arrays and chunk caches.
+  - Measurement: cost per structural change vs. setting a field on a component
+    the entity already has, swept across entity count and component count.
+  - When the move is the right call anyway. Rare transitions, large payloads,
+    cases where the query narrowing pays for the move.
+*/}

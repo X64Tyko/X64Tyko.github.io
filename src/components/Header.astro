@@ -1,0 +1,40 @@
+---
+import { site, nav } from '@/data/site';
+import ThemeToggle from '@/components/ThemeToggle.astro';
+
+// Mark the current section active, treating /blog/some-post/ as part of /blog/.
+const path = Astro.url.pathname;
+const isActive = (href: string) => path === href || path.startsWith(href);
+---
+
+<header
+  class="sticky top-0 z-40 border-b border-slate-200/80 bg-white/85 backdrop-blur
+         dark:border-slate-800/80 dark:bg-slate-950/85"
+>
+  <div class="container-prose flex h-16 items-center justify-between gap-4">
+    <a
+      href="/"
+      class="font-mono text-sm font-semibold tracking-tight text-slate-900 dark:text-slate-100"
+    >
+      {site.name}
+    </a>
+
+    <nav aria-label="Main" class="flex items-center gap-1 sm:gap-2">
+      {nav.map((item) => (
+        <a
+          href={item.href}
+          aria-current={isActive(item.href) ? 'page' : undefined}
+          class:list={[
+            'rounded-md px-2.5 py-1.5 text-sm transition-colors sm:px-3',
+            isActive(item.href)
+              ? 'font-medium text-accent-700 dark:text-accent-300'
+              : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100',
+          ]}
+        >
+          {item.label}
+        </a>
+      ))}
+      <ThemeToggle />
+    </nav>
+  </div>
+</header>

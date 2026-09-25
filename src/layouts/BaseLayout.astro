@@ -1,0 +1,102 @@
+---
+import { site } from '@/data/site';
+import Header from '@/components/Header.astro';
+import Footer from '@/components/Footer.astro';
+import '@/styles/global.css';
+
+interface Props {
+  title?: string;
+  description?: string;
+  /** Renders as an article in Open Graph and adds published/modified times. */
+  publishedDate?: Date;
+  updatedDate?: Date;
+  /** Set on pages that shouldn't be indexed. */
+  noindex?: boolean;
+}
+
+const {
+  title,
+  description = site.description,
+  publishedDate,
+  updatedDate,
+  noindex = false,
+} = Astro.props;
+
+// Home page shows the bare site name; every other page gets a suffix.
+const pageTitle = title ? `${title} — ${site.name}` : `${site.name} — ${site.title}`;
+const canonical = new URL(Astro.url.pathname, Astro.site);
+const ogType = publishedDate ? 'article' : 'website';
+---
+
+<!doctype html>
+<html lang="en" class="scroll-pt-20">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="sitemap" href="/sitemap-index.xml" />
+    <link
+      rel="alternate"
+      type="application/rss+xml"
+      title={`${site.name} — Writing`}
+      href={new URL('rss.xml', Astro.site)}
+    />
+    <link rel="canonical" href={canonical} />
+    {noindex && <meta name="robots" content="noindex, nofollow" />}
+
+    <title>{pageTitle}</title>
+    <meta name="description" content={description} />
+    <meta name="generator" content={Astro.generator} />
+
+    <meta property="og:type" content={ogType} />
+    <meta property="og:title" content={title ?? site.name} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:site_name" content={site.name} />
+    {publishedDate && (
+      <meta property="article:published_time" content={publishedDate.toISOString()} />
+    )}
+    {updatedDate && (
+      <meta property="article:modified_time" content={updatedDate.toISOString()} />
+    )}
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title ?? site.name} />
+    <meta name="twitter:description" content={description} />
+
+    {/*
+      Runs before first paint so a dark-mode visitor never sees a white flash.
+      Deliberately inline and synchronous — moving this to a module defers it.
+    */}
+    <script is:inline>
+      (() => {
+        try {
+          const stored = localStorage.getItem('theme');
+          const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          if (stored === 'dark' || (!stored && prefersDark)) {
+            document.documentElement.classList.add('dark');
+          }
+        } catch {
+          /* Private mode or blocked storage: fall back to the light theme. */
+        }
+      })();
+    </script>
+  </head>
+
+  <body class="flex min-h-screen flex-col">
+    <a
+      href="#main"
+      class="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50
+             focus:rounded-md focus:bg-accent-600 focus:px-4 focus:py-2 focus:text-white"
+    >
+      Skip to content
+    </a>
+
+    <Header />
+
+    <main id="main" class="flex-1 py-12 sm:py-16">
+      <slot />
+    </main>
+
+    <Footer />
+  </body>
+</html>

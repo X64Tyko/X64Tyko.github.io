@@ -1,0 +1,27 @@
+---
+/**
+ * Typographic shell for MDX content. Tailwind's typography plugin handles the
+ * rhythm; the overrides below align it with the site's gold/purple accents.
+ */
+---
+
+<div
+  class="prose prose-slate max-w-none dark:prose-invert
+         prose-headings:scroll-mt-24 prose-headings:font-semibold prose-headings:tracking-tight
+         prose-h2:mt-12 prose-h2:border-b prose-h2:border-slate-200 prose-h2:pb-2
+         dark:prose-h2:border-slate-800
+         prose-a:font-medium prose-a:text-accent-700 prose-a:underline
+         prose-a:decoration-gold-400 prose-a:underline-offset-4
+         hover:prose-a:decoration-gold-600
+         dark:prose-a:text-accent-300 dark:hover:prose-a:decoration-gold-300
+         prose-blockquote:border-l-gold-400 prose-blockquote:not-italic
+         prose-code:font-mono prose-code:before:content-none prose-code:after:content-none
+         prose-code:rounded prose-code:bg-slate-100 prose-code:px-1.5 prose-code:py-0.5
+         prose-code:text-[0.875em] prose-code:font-normal
+         dark:prose-code:bg-slate-800
+         prose-pre:rounded-lg prose-pre:border prose-pre:border-slate-200
+         dark:prose-pre:border-slate-800
+         prose-img:rounded-lg prose-hr:border-slate-200 dark:prose-hr:border-slate-800"
+>
+  <slot />
+</div>

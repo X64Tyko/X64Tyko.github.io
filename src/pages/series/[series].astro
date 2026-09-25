@@ -1,0 +1,96 @@
+---
+import type { GetStaticPaths } from 'astro';
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import FormattedDate from '@/components/FormattedDate.astro';
+import { getSeriesMap, seriesSlug } from '@/lib/posts';
+
+export const getStaticPaths = (async () => {
+  const map = await getSeriesMap();
+
+  return [...map].map(([name, posts]) => ({
+    params: { series: seriesSlug(name) },
+    props: { name, posts },
+  }));
+}) satisfies GetStaticPaths;
+
+const { name, posts } = Astro.props;
+
+// Series pages list drafts by design, so keep the page out of the index until
+// at least one post in it is published.
+const hasPublished = posts.some((p) => !p.data.draft);
+---
+
+<BaseLayout
+  title={name}
+  description={`Every post in the ${name} series, in reading order.`}
+  noindex={!hasPublished}
+>
+  <div class="container-prose">
+    <header class="pb-4">
+      <hr class="rule-gold mb-8" />
+      <p class="font-mono text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
+        Series
+      </p>
+      <h1 class="mt-2 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl dark:text-slate-100">
+        {name}
+      </h1>
+      <p class="mt-3 text-slate-600 dark:text-slate-400">
+        {posts.length} {posts.length === 1 ? 'post' : 'posts'}, in reading order.
+      </p>
+    </header>
+
+    <ol
+      class="divide-y divide-slate-200 border-t border-slate-200
+             dark:divide-slate-800 dark:border-slate-800"
+    >
+      {
+        posts.map((post, i) => (
+          <li class="group relative flex gap-4 py-8 sm:gap-6">
+            <span
+              class="mt-0.5 shrink-0 font-mono text-sm text-gold-600 dark:text-gold-400"
+              aria-hidden="true"
+            >
+              {String(i + 1).padStart(2, '0')}
+            </span>
+
+            <div class="min-w-0">
+              <div class="flex flex-wrap items-center gap-3 text-sm text-slate-500 dark:text-slate-400">
+                <FormattedDate date={post.data.date} class="font-mono text-xs" />
+                {post.data.draft && (
+                  <span
+                    class="rounded-full bg-gold-100 px-2 py-0.5 font-mono text-xs font-medium
+                           text-gold-900 dark:bg-gold-900/30 dark:text-gold-200"
+                  >
+                    draft
+                  </span>
+                )}
+              </div>
+
+              <h2 class="mt-2 text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+                <a href={`/blog/${post.id}/`} class="after:absolute after:inset-0">
+                  <span
+                    class="bg-gradient-to-r from-gold-400 to-accent-400 bg-[length:0%_2px]
+                           bg-bottom bg-no-repeat transition-[background-size] duration-300
+                           group-hover:bg-[length:100%_2px]"
+                  >
+                    {post.data.title}
+                  </span>
+                </a>
+              </h2>
+
+              <p class="mt-2 leading-relaxed text-slate-600 dark:text-slate-400">
+                {post.data.description}
+              </p>
+            </div>
+          </li>
+        ))
+      }
+    </ol>
+
+    <footer class="mt-12 border-t border-slate-200 pt-8 dark:border-slate-800">
+      <a href="/blog/" class="text-sm text-accent-700 link-underline dark:text-accent-300">
+        &larr; All posts
+      </a>
+    </footer>
+  </div>
+</BaseLayout>

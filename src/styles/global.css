@@ -1,0 +1,133 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+/* Class-based dark mode so the header toggle can override the OS setting. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: "Inter var", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, "SF Mono",
+    Menlo, Consolas, "Liberation Mono", monospace;
+
+  /* Primary accent: purple. Carries links, active nav, and focus rings. */
+  --color-accent-50: oklch(0.977 0.014 305);
+  --color-accent-100: oklch(0.946 0.033 305);
+  --color-accent-200: oklch(0.902 0.063 306);
+  --color-accent-300: oklch(0.827 0.12 306);
+  --color-accent-400: oklch(0.714 0.203 305);
+  --color-accent-500: oklch(0.627 0.233 304);
+  --color-accent-600: oklch(0.558 0.238 303);
+  --color-accent-700: oklch(0.496 0.224 302);
+  --color-accent-800: oklch(0.438 0.191 302);
+  --color-accent-900: oklch(0.381 0.162 303);
+
+  /* Secondary accent: gold. Used sparingly — rules, tags, hover decoration. */
+  --color-gold-50: oklch(0.982 0.024 92);
+  --color-gold-100: oklch(0.958 0.056 92);
+  --color-gold-200: oklch(0.922 0.098 90);
+  --color-gold-300: oklch(0.879 0.128 88);
+  --color-gold-400: oklch(0.837 0.152 86);
+  --color-gold-500: oklch(0.783 0.156 83);
+  --color-gold-600: oklch(0.693 0.145 76);
+  --color-gold-700: oklch(0.577 0.124 70);
+  --color-gold-800: oklch(0.487 0.104 67);
+  --color-gold-900: oklch(0.414 0.09 65);
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* Respect users who ask for reduced motion. */
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  /*
+   * Declaring color-scheme is not optional. Without it, browsers with
+   * auto-darkening enabled force-darken the light theme, so light mode renders
+   * as a muddy grey instead of white and never looks like light mode at all.
+   * It also makes scrollbars and form controls follow the theme.
+   */
+  :root {
+    color-scheme: light;
+  }
+
+  :root:is(.dark) {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-white text-slate-800 antialiased;
+    @apply dark:bg-slate-950 dark:text-slate-300;
+  }
+
+  /* Visible keyboard focus everywhere, not just where Tailwind adds it. */
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-accent-600 dark:outline-accent-400;
+  }
+
+  ::selection {
+    @apply bg-gold-200 text-slate-900;
+  }
+}
+
+@layer components {
+  /* Shared page gutter. Keeps every route aligned to the same measure. */
+  .container-prose {
+    @apply mx-auto w-full max-w-3xl px-5 sm:px-6;
+  }
+
+  .link-underline {
+    @apply underline decoration-slate-300 decoration-1 underline-offset-4
+           transition-colors hover:decoration-gold-500
+           dark:decoration-slate-600 dark:hover:decoration-gold-400;
+  }
+
+  /* Small gold rule used to head sections. */
+  .rule-gold {
+    @apply h-px w-10 border-0 bg-gradient-to-r from-gold-500 to-accent-500;
+  }
+
+  .tag-chip {
+    @apply inline-flex items-center rounded-full border border-gold-300/70 bg-gold-50
+           px-2.5 py-0.5 font-mono text-xs text-gold-900
+           dark:border-gold-700/50 dark:bg-gold-900/20 dark:text-gold-200;
+  }
+}
+
+/*
+ * Shiki emits both themes; we show one and hide the other so code blocks
+ * follow the site theme instead of the OS.
+ */
+.dark .astro-code,
+.dark .astro-code span {
+  color: var(--shiki-dark) !important;
+  background-color: var(--shiki-dark-bg) !important;
+  font-style: var(--shiki-dark-font-style) !important;
+  font-weight: var(--shiki-dark-font-weight) !important;
+  text-decoration: var(--shiki-dark-text-decoration) !important;
+}
+
+/*
+ * The typography plugin styles inline `code`, but our override would also hit
+ * code inside fenced blocks and double up Shiki's own background/padding.
+ */
+.prose pre code {
+  background-color: transparent !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  font-weight: inherit;
+}

@@ -1,0 +1,77 @@
+---
+title: 'Four Storage Tiers, Chosen by Access Pattern'
+description: >-
+  One layout for every entity is the assumption worth dropping. Storage picked
+  per component by how it is read and whether it needs history, including plain
+  AoS where columns would not pay.
+date: 2026-09-25
+area: 'engineering'
+tags: ['ecs', 'architecture', 'performance', 'data-oriented-design']
+series: 'Design Space'
+draft: true
+---
+
+{/* STUB. Arguably the strongest piece in the set, because it is the working
+    resolution of the OOP-versus-ECS binary rather than an argument about it.
+    The engine uses AoS and field-granular SoA and picks per component. */}
+
+{/* TODO: open on the assumption being dropped. Every ECS picks one storage
+    strategy and applies it to everything, a decision most engines make once,
+    silently, at the beginning. */}
+
+## The tiers
+
+| Tier | Structure | Frames | Rollback | For |
+| --- | --- | --- | --- | --- |
+| Cold | Archetype chunks, AoS | 0 | No | Rarely touched, not iterated |
+| Static | Read-only array | 0 | No | Geometry that never changes |
+| Volatile | SoA ring | 3 | No | Cosmetic entities, ambient AI, particles |
+| Temporal | SoA ring | max(8, N) | Yes | Networked, simulation-authoritative |
+
+{/* TODO: the Cold row is the point and it should be said out loud. Plain AoS
+    archetype chunks, the conventional thing, kept deliberately for data where
+    column decomposition would cost more than it returns. A post arguing for
+    field-granular columns is more credible when it also says where they lose. */}
+
+## You pay for time travel only where you need it
+
+{/* TODO
+      - Rollback capability is a per-component property, not a global mode.
+      - When rollback is compiled out, Temporal silently downgrades to
+        Volatile, so a build that cannot use history does not allocate it.
+      - Ring depth is max(8, configured); the floor of 8 covers the physics
+        divisor. */}
+
+{/* MEASUREMENTS - what history costs
+    Source: Trinyx docs/reference/Performance-Targets.md. Measured 2026-05,
+    RelWithDebInfo. Intel Core Ultra 9 275HX / Ryzen 9 9950X, 32-64GB,
+    RTX 5070 Ti / RTX 4070, CachyOS and Windows 11. Tracy for frame timing.
+
+    Temporal slab at 100K entities:
+      8-frame ring (minimum)          ~270MB
+      field data at rollback check    ~34MB
+    Per-frame SaveSnapshot overhead   <0.1ms
+    History Write budget              0.2ms of a 1.95ms frame
+*/}
+
+## Partition follows the consumer
+
+{/* TODO. The second half of the layout, and what makes field granularity
+    affordable:
+      - Two arenas with dual-ended allocation. Render grows right from 0 and
+        Dual grows left from the renderable boundary; Phys grows right from
+        that boundary and Logic grows left from the cached boundary.
+      - Dual and Phys meet at the seam so the physics solver iterates them as
+        one dense pass with no gap.
+      - The partition is derived from SystemGroup tags on components. Nobody
+        annotates placement by hand; it falls out of declaring who reads it.
+
+    Lead with that last point. The layout is a consequence of declaring access,
+    not a separate thing to maintain. */}
+
+## Related
+
+- [Three Kinds of ECS Storage, and Why](/blog/three-kinds-of-ecs-storage/), for
+  the storage models this sits among.
+- [The OOP vs. ECS Fallacy](/blog/oop-vs-ecs-fallacy/), for the argument this
+  is the implementation of.

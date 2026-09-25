@@ -1,0 +1,96 @@
+---
+import { comments, commentsConfigured } from '@/data/comments';
+
+// giscus renders inside an iframe it injects itself, so its theme cannot be
+// set with CSS. It has to be told, once on load and again whenever the site
+// theme changes. ThemeToggle dispatches `themechange` for exactly that.
+//
+// The loader below is `is:inline` on purpose. A normal <script> would be
+// hoisted and bundled into every article page whether or not comments are
+// configured, which means shipping dead JavaScript to pages that are otherwise
+// pure HTML. Inline keeps it inside the conditional where it belongs.
+---
+
+{
+  commentsConfigured ? (
+    <section class="mt-16 border-t border-slate-200 pt-8 dark:border-slate-800">
+      <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+        Comments
+      </h2>
+      <p class="mt-2 text-sm text-slate-500 dark:text-slate-400">
+        Threads live in GitHub Discussions. Signing in with GitHub is what keeps
+        the spam out.
+      </p>
+
+      <div class="mt-6" id="giscus-container" />
+
+      <script
+        is:inline
+        define:vars={{
+          repo: comments.repo,
+          repoId: comments.repoId,
+          category: comments.category,
+          categoryId: comments.categoryId,
+          mapping: comments.mapping,
+          reactions: comments.reactionsEnabled ? '1' : '0',
+          inputPosition: comments.inputPosition,
+          lang: comments.lang,
+        }}
+      >
+        {`
+        (() => {
+          const container = document.getElementById('giscus-container');
+          if (!container) return;
+
+          const isDark = () => document.documentElement.classList.contains('dark');
+          const themeFor = () => (isDark() ? 'dark' : 'light');
+
+          const s = document.createElement('script');
+          s.src = 'https://giscus.app/client.js';
+          s.async = true;
+          s.crossOrigin = 'anonymous';
+          s.setAttribute('data-repo', repo);
+          s.setAttribute('data-repo-id', repoId);
+          s.setAttribute('data-category', category);
+          s.setAttribute('data-category-id', categoryId);
+          s.setAttribute('data-mapping', mapping);
+          s.setAttribute('data-strict', '1');
+          s.setAttribute('data-reactions-enabled', reactions);
+          s.setAttribute('data-emit-metadata', '0');
+          s.setAttribute('data-input-position', inputPosition);
+          s.setAttribute('data-theme', themeFor());
+          s.setAttribute('data-lang', lang);
+          s.setAttribute('data-loading', 'lazy');
+          container.appendChild(s);
+
+          document.addEventListener('themechange', () => {
+            const frame = document.querySelector('iframe.giscus-frame');
+            if (!frame || !frame.contentWindow) return;
+            frame.contentWindow.postMessage(
+              { giscus: { setConfig: { theme: themeFor() } } },
+              'https://giscus.app',
+            );
+          });
+        })();
+        `}
+      </script>
+    </section>
+  ) : (
+    import.meta.env.DEV && (
+      <section class="mt-16 border-t border-slate-200 pt-8 dark:border-slate-800">
+        <div class="rounded-lg border border-dashed border-gold-400 bg-gold-50 p-5 text-sm dark:border-gold-700 dark:bg-gold-900/20">
+          <p class="font-medium text-gold-900 dark:text-gold-200">
+            Comments not configured
+          </p>
+          <p class="mt-2 text-slate-600 dark:text-slate-400">
+            Fill in <code class="font-mono">repoId</code> and{' '}
+            <code class="font-mono">categoryId</code> in{' '}
+            <code class="font-mono">src/data/comments.ts</code>, then set{' '}
+            <code class="font-mono">enabled: true</code>. Setup steps are in that
+            file. This notice only appears in dev.
+          </p>
+        </div>
+      </section>
+    )
+  )
+}

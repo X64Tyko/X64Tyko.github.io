@@ -1,0 +1,34 @@
+---
+title: 'UObject and Mass Entity Are Answering Different Questions'
+description: >-
+  Unreal ships two ways to represent a thing in the world. The choice is
+  usually framed as old versus new, which is the wrong axis.
+date: 2026-09-25
+area: 'engineering'
+tags: ['unreal', 'ecs', 'architecture', 'performance']
+series: 'Design Space'
+draft: true
+---
+
+{/*
+  STUB. Design Space register.
+
+  SOURCE CONSTRAINT, and it matters more on this post than any other. Reason
+  from public Unreal documentation and public source only. A Code Critical
+  framing would need production anecdotes to have any teeth, and those are
+  exactly what is off limits; the Design Space framing is doing confidentiality
+  work here, not just tonal work. Keep it that way.
+*/}
+
+{/* TODO: sections to write
+
+  - What a UObject buys: reflection, GC, replication, Blueprint exposure,
+    editor integration. It is a lot, and it is why the base cost is what it is.
+  - What Mass buys: the archetype storage model, batch processing, and the
+    entity counts that makes reachable.
+  - The axis that actually decides it: per-instance cost times instance count,
+    against how much of the UObject feature set the thing genuinely needs.
+  - Why "old vs new" is the wrong framing. Both are current, and the cases
+    where a UObject is correct are not legacy cases.
+  - Interop, and where the seams hurt.
+*/}

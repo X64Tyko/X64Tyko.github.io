@@ -1,0 +1,65 @@
+---
+title: 'The Editor Edits Code'
+description: >-
+  Blueprints make the graph authoritative and C++ the foreign thing. Inverting
+  that means the node graph is a view of real source, which turns the hard
+  problem into parsing rather than serialising.
+date: 2026-09-25
+area: 'engineering'
+tags: ['tooling', 'editor', 'cpp', 'architecture']
+series: 'Design Space'
+draft: true
+---
+
+{/* STUB. Design Space register: mechanism and tradeoffs, no salt. */}
+
+{/* TODO: open on the inversion, because it is the whole idea. A visual
+    scripting graph normally IS the program, compiled to bytecode, with C++
+    reachable only through explicit bindings. Here the C++ is the program and
+    the graph is a projection of it. Everything else follows from that. */}
+
+## What that buys
+
+{/* TODO
+      - The document format is source. Git diffs are real diffs, merges are
+        real merges, blame works, and there is no binary asset to corrupt.
+      - Refactoring tools already understand the project.
+      - No second representation to drift. (Link Two Models of the Same Thing:
+        this is the constructive case of that argument.)
+      - Deleting the editor does not strand the project. */}
+
+## How it works
+
+{/* TODO
+      - TNXFUNC() annotations mark functions exposed to the graph, plus the
+        lifecycle hooks: PrePhysics, PhysicsStep, PostPhysics, ScalarUpdate,
+        OnSpawn, OnDestroy.
+      - A dependency-free DLL scans source and parses method bodies into a
+        statement IR: If / Return / Assign / Call / Decl / Raw, with nested
+        branches.
+      - Graph building lives on the editor side; the parser knows nothing about
+        ImGui or the engine. Worth saying why that separation earns its keep:
+        the same parser can run as a standalone precompiler.
+      - The generator panel goes the other way and emits component source, so
+        the schema macros are written by the tool rather than by hand. */}
+
+## The hard part, which is not parsing
+
+{/* TODO. Round-trip fidelity is the real problem and it is honest to say it
+    is unsolved here. The project went on hiatus with the parser read-mostly.
+
+      - StmtKind::Raw is the escape hatch: anything the parser does not model
+        becomes an opaque blob. Fine for display, fatal for regeneration,
+        because a Raw node cannot be safely rewritten.
+      - Comments, formatting and macros have no home in the IR.
+      - The open question worth writing about: how much C++ do you actually
+        have to model before a graph is useful, and is that a smaller subset
+        than it first appears?
+
+    Write this as "what I had working and what I had not solved when I stopped",
+    not as a finished system. The unsolved part is the interesting part. */}
+
+## Related
+
+- [Two Models of the Same Thing](/blog/two-models-of-the-same-thing/), for why
+  a second representation is a liability rather than a feature.

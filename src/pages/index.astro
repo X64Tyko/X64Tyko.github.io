@@ -1,0 +1,68 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import PostCard from '@/components/PostCard.astro';
+import { getVisiblePosts, byNewest } from '@/lib/posts';
+import { site } from '@/data/site';
+import { tracks } from '@/data/tracks';
+
+const latest = (await getVisiblePosts()).sort(byNewest).slice(0, 3);
+---
+
+<BaseLayout>
+  <div class="container-prose">
+    <section class="py-8 sm:py-12">
+      <hr class="rule-gold mb-8" />
+      <h1 class="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl dark:text-slate-100">
+        {site.name}
+      </h1>
+      <p class="mt-3 font-mono text-sm text-accent-700 dark:text-accent-300">
+        {site.title}
+      </p>
+      <p class="mt-6 max-w-2xl text-lg leading-relaxed text-slate-600 dark:text-slate-400">
+        {site.tagline}
+      </p>
+    </section>
+
+    <section class="grid gap-4 sm:grid-cols-2">
+      {
+        tracks.map((track) => (
+          <a
+            href={track.href}
+            class="group rounded-lg border border-slate-200 p-6 transition-colors
+                   hover:border-gold-400 dark:border-slate-800 dark:hover:border-gold-500"
+          >
+            <h2 class="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+              <span
+                class="bg-gradient-to-r from-gold-400 to-accent-400 bg-[length:0%_2px]
+                       bg-bottom bg-no-repeat transition-[background-size] duration-300
+                       group-hover:bg-[length:100%_2px]"
+              >
+                {track.label}
+              </span>
+            </h2>
+            <p class="mt-2 leading-relaxed text-slate-600 dark:text-slate-400">
+              {track.tagline}
+            </p>
+          </a>
+        ))
+      }
+    </section>
+
+    {latest.length > 0 && (
+      <section class="mt-12 border-t border-slate-200 pt-4 dark:border-slate-800">
+        <div class="flex items-baseline justify-between">
+          <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            Latest
+          </h2>
+          <a href="/blog/" class="text-sm text-accent-700 link-underline dark:text-accent-300">
+            Everything
+          </a>
+        </div>
+
+        <div class="divide-y divide-slate-200 dark:divide-slate-800">
+          {latest.map((post) => <PostCard post={post} />)}
+        </div>
+      </section>
+    )}
+  </div>
+</BaseLayout>

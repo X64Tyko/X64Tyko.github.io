@@ -1,0 +1,62 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import { getSeriesMap, seriesSlug } from '@/lib/posts';
+
+const series = [...(await getSeriesMap())].sort((a, b) => a[0].localeCompare(b[0]));
+
+// Same reasoning as the individual series pages: this lists post titles,
+// drafts included, so don't advertise it until something is published.
+const hasPublished = series.some(([, posts]) => posts.some((p) => !p.data.draft));
+---
+
+<BaseLayout title="Series" description="Multi-part writing, grouped." noindex={!hasPublished}>
+  <div class="container-prose">
+    <header class="pb-4">
+      <hr class="rule-gold mb-8" />
+      <h1 class="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl dark:text-slate-100">
+        Series
+      </h1>
+      <p class="mt-3 text-slate-600 dark:text-slate-400">
+        Posts that belong together, grouped and ordered.
+      </p>
+    </header>
+
+    {
+      series.length === 0 ? (
+        <p class="py-12 text-slate-500 dark:text-slate-400">
+          No series yet. Add a <code class="font-mono text-sm">series</code> field to
+          a post's frontmatter and it will appear here.
+        </p>
+      ) : (
+        <ul
+          class="divide-y divide-slate-200 border-t border-slate-200
+                 dark:divide-slate-800 dark:border-slate-800"
+        >
+          {series.map(([name, posts]) => (
+            <li class="group relative py-8">
+              <h2 class="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+                <a href={`/series/${seriesSlug(name)}/`} class="after:absolute after:inset-0">
+                  <span
+                    class="bg-gradient-to-r from-gold-400 to-accent-400 bg-[length:0%_2px]
+                           bg-bottom bg-no-repeat transition-[background-size] duration-300
+                           group-hover:bg-[length:100%_2px]"
+                  >
+                    {name}
+                  </span>
+                </a>
+              </h2>
+
+              <p class="mt-2 font-mono text-xs text-slate-500 dark:text-slate-400">
+                {posts.length} {posts.length === 1 ? 'post' : 'posts'}
+              </p>
+
+              <p class="mt-2 leading-relaxed text-slate-600 dark:text-slate-400">
+                Starts with {posts[0].data.title}.
+              </p>
+            </li>
+          ))}
+        </ul>
+      )
+    }
+  </div>
+</BaseLayout>

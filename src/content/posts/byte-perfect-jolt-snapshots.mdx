@@ -1,0 +1,67 @@
+---
+title: 'Making a Third-Party Physics Engine Rollback-Safe'
+description: >-
+  Rollback needs to restore the world exactly. That is tractable for your own
+  simulation state and considerably less so for the physics library you did not
+  write.
+date: 2026-09-25
+area: 'engineering'
+tags: ['rollback', 'netcode', 'physics', 'determinism']
+series: 'Design Space'
+draft: true
+---
+
+{/* STUB. Narrow, hard, and searched for. Rollback netcode in general is well
+    covered; snapshotting somebody else's solver is not. */}
+
+{/* TODO: open on the asymmetry. Your own ECS state is yours to lay out, so
+    byte-exact snapshot and restore is a design decision. A physics library
+    owns its solver state, contact caches, sleep state and islands, and you do
+    not get to choose how any of it is stored. */}
+
+## What has to be restored
+
+{/* TODO: enumerate what people forget. Transforms are the easy part.
+    Velocities, contact manifolds and their caches, solver warm-starting data,
+    sleep and island state. Miss any of it and the resim diverges quietly
+    rather than loudly, which is worse. */}
+
+{/* MEASUREMENTS - determinism validation
+    Source: Trinyx docs/math-and-determinism/Determinism.md and
+    docs/reference/Performance-Targets.md. Measured 2026-05, RelWithDebInfo.
+    Intel Core Ultra 9 275HX / Ryzen 9 9950X, 32-64GB, RTX 5070 Ti / RTX 4070,
+    CachyOS and Windows 11. Tracy for frame timing.
+
+    Jolt state, 56 bodies             7,436 bytes, byte-perfect
+    ECS temporal slab, 100K           34MB, byte-perfect memcmp
+    RestoreSnapshot                   <1ms
+    Per-frame SaveSnapshot overhead   <0.1ms
+    Validated                         2026-03-29
+
+    Resim cost, full resimulation:
+      5 frames, 100K entities         ~18ms
+      12 frames (2 physics boundaries) ~28ms
+    Target                            <5ms for a 128-frame window
+*/}
+
+## The rate mismatch
+
+{/* TODO. The genuinely interesting structural problem, and the one most
+    rollback writing skips because it assumes a single rate.
+
+      - Logic runs at 512Hz, physics at 64Hz. Eight logic ticks per physics
+        step.
+      - So a rollback target usually does not land on a physics snapshot, and
+        the worst case is 7 frames of physics approximated forward from the
+        nearest one.
+      - At 64Hz that is roughly 109ms of approximation. Whether that is
+        acceptable is a judgement about what players perceive, so make the
+        judgement explicitly rather than implying it is free.
+      - The ring depth floor of 8 exists precisely to cover this divisor. */}
+
+## Verifying it
+
+{/* TODO: byte-perfect is a claim that needs a test, not an assertion. Describe
+    the harness: run, snapshot, roll back, replay the same inputs, memcmp.
+    34MB compared, not sampled. Say what the test does not cover, which is
+    cross-platform and cross-compiler determinism unless that is also tested. */}

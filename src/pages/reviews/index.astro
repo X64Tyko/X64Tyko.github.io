@@ -1,0 +1,75 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import FormattedDate from '@/components/FormattedDate.astro';
+import { overallScore, formatScore } from '@/lib/reviews';
+
+const reviews = (
+  await getCollection('reviews', ({ data }) => import.meta.env.DEV || !data.draft)
+).sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+---
+
+<BaseLayout
+  title="Reviews"
+  description="Games taken apart for what their systems can teach."
+>
+  <div class="container-prose">
+    <header class="pb-4">
+      <hr class="rule-gold mb-8" />
+      <h1 class="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl dark:text-slate-100">
+        Reviews
+      </h1>
+      <p class="mt-3 text-slate-600 dark:text-slate-400">
+        Games taken apart for what their systems can teach, less about whether
+        you should buy them.
+      </p>
+    </header>
+
+    {
+      reviews.length === 0 ? (
+        <p class="py-12 text-slate-500 dark:text-slate-400">
+          No reviews yet. Add an <code class="font-mono text-sm">.mdx</code> file to
+          <code class="font-mono text-sm">src/content/reviews/</code>.
+        </p>
+      ) : (
+        <ul class="divide-y divide-slate-200 border-t border-slate-200 dark:divide-slate-800 dark:border-slate-800">
+          {reviews.map((review) => (
+            <li class="group relative py-8">
+              <div class="flex flex-wrap items-center gap-3 text-sm text-slate-500 dark:text-slate-400">
+                <FormattedDate date={review.data.date} class="font-mono text-xs" />
+                {review.data.genre && (
+                  <span class="font-mono text-xs">{review.data.genre}</span>
+                )}
+                {review.data.draft && (
+                  <span class="rounded-full bg-gold-100 px-2 py-0.5 font-mono text-xs font-medium text-gold-900 dark:bg-gold-900/30 dark:text-gold-200">
+                    draft
+                  </span>
+                )}
+              </div>
+
+              <div class="mt-2 flex items-baseline justify-between gap-4">
+                <h2 class="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+                  <a href={`/reviews/${review.id}/`} class="after:absolute after:inset-0">
+                    <span class="bg-gradient-to-r from-gold-400 to-accent-400 bg-[length:0%_2px] bg-bottom bg-no-repeat transition-[background-size] duration-300 group-hover:bg-[length:100%_2px]">
+                      {review.data.game}
+                    </span>
+                  </a>
+                </h2>
+
+                {overallScore(review.data) !== undefined && (
+                  <span class="shrink-0 font-mono text-sm text-gold-700 dark:text-gold-400">
+                    {formatScore(overallScore(review.data)!)}/10
+                  </span>
+                )}
+              </div>
+
+              <p class="mt-2 leading-relaxed text-slate-600 dark:text-slate-400">
+                {review.data.verdict ?? review.data.description}
+              </p>
+            </li>
+          ))}
+        </ul>
+      )
+    }
+  </div>
+</BaseLayout>

@@ -1,0 +1,147 @@
+---
+title: 'Two Models of the Same Thing'
+description: >-
+  A function that operates on data it doesn't own has to carry its own private
+  theory of that data. The shape ends up known in two places, and the cost is
+  paid in the bandwidth spent keeping them aligned.
+date: 2026-09-24
+area: 'engineering'
+tags: ['architecture', 'design', 'cpp']
+series: 'Code Critical'
+draft: true
+---
+
+{/*
+  SKELETON. Same spine as the other two: what the technique is for, the
+  distinction people miss, failure modes, what I'm not claiming, the bill.
+
+  IMPORTANT: this is NOT a performance post. No cache lines, no SoA, no
+  prefetch. The cost here is representational and cognitive. The memory-layout
+  argument lives in the ECS post and mixing them dilutes both.
+*/}
+
+Here is a method everyone has written:
+
+```csharp
+inventory.ConsumeAmmo(AmmoType.Rifle, 30);
+```
+
+Reasonable enough. Now consider what `Inventory` has to know in order to
+implement it. Which slots hold rifle ammo. That ammo comes in stacks and a
+stack has a count. That a stack has a maximum. That consuming thirty might
+drain two stacks and part of a third. That an emptied stack is removed, or
+deliberately isn't. That some items are consumable and others are not.
+
+Almost none of that is inventory data. It is item data, and `Inventory` now
+contains a working model of it: a local, private, temporary theory of what an
+item is, assembled from the outside so that this one function can do its job.
+
+The item's shape is now known in two places. Change how stacking works and you
+edit the item, and then you go hunting for every function that had an opinion
+about it.
+
+That hunt is the cost I want to talk about. It never appears in a profiler. It
+appears as the bandwidth spent, every time you open the file, rebuilding the
+mapping between the data's actual shape and the shape this particular function
+decided to imagine.
+
+And note the direction, because it's the whole argument. The function was
+written first and the data was marshalled to feed it. Reverse it and the data's
+shape is the source of truth, with the code conforming to it.
+
+## Whose invariants does this touch?
+
+{/* TODO. Load-bearing section: this is the test the post hands the reader,
+    and the rest of the piece is applications of it. */}
+
+The usual question is "what is this class responsible for", which is a question
+about naming and answers nothing. A better one: whose invariants can this code
+violate if it gets it wrong? Put the operation there.
+
+Run the inventory case through it. Consumption decrements a count and has to
+respect stack size, not going below zero, and whether the item is consumable at
+all. Those are the item's rules, so `Consume(n)` belongs on the item and
+returns how much it actually consumed. Selection is a different kind of fact:
+which stacks satisfy this request, and in what order, is a property of the
+collection. So `Inventory.ConsumeAmmo` survives, but it selects and delegates
+instead of reaching in to decrement.
+
+Neither placement was wrong by fiat. The split fell out of asking whose rules
+were at stake.
+
+## Where the bridge shows up
+
+{/* TODO: pick three or four. Save systems is the strongest, lead with it or
+    close with it. */}
+
+**Save and serialization.** A `SaveManager` that knows the shape of everything
+serializable is the undeniable case, because the failure is so familiar: add a
+field, forget the save code, ship a game that silently drops it. The shape is
+known twice and nothing enforces agreement. Everyone has this bug story, which
+makes it the example that costs no persuading.
+
+**Damage application.** A combat system that applies damage has to model the
+target's defensive state: health, armour, resistances, shields, temporary
+immunity. That model lives in the combat system while the data lives on the
+target. Change how shields interact with armour and you edit a file that
+doesn't own either.
+
+**Validation.** A validator holds the rules for a record defined somewhere
+else, so the record's constraints exist in two documents that drift.
+
+**Getters as a bridge-building kit.** When the data is hidden, callers rebuild
+it from the outside one accessor at a time, which is how a function ends up with
+a private model even when nobody intended to give it one. Worth noting that
+encapsulation is what produces this, not what prevents it.
+{/* TODO: this one is sharp but it cuts toward the OOP critique. Decide whether
+    it belongs here or is its own post. */}
+
+## What I'm not claiming
+
+{/* TODO. Concede both of these properly. The post is dogma without them. */}
+
+**Sometimes a separate model is the point.** Building an acceleration structure,
+packing a GPU buffer, compiling a query plan: these are transformations into a
+genuinely different representation, and that is real work rather than an
+accidental bridge. The mesh-and-renderer case is actually this, which is why
+it's a poor example for the argument. A renderer is supposed to have its own
+representation.
+
+The distinction I'd draw: an operation that maintains the data's own invariants
+belongs with the data. An operation that deliberately transforms it into another
+shape belongs outside, and its private model is the deliverable rather than the
+overhead.
+
+**The other failure is the god object.** Take "put the operation with the data"
+far enough and the item knows about consumption, rendering, networking, UI, and
+save format. That's worse than what we started with. The limiting principle
+above is what keeps it from going there, and the post has to say so before
+somebody says it for me.
+
+## The bill
+
+{/* TODO. Land on the pedagogy, same as the other two. */}
+
+Points to hit:
+
+- We teach decomposition as a question about behaviour. What does this class
+  do, what is it responsible for, what is its single reason to change. All of
+  those can be answered without ever asking what data the code touches or who
+  owns the rules it has to respect.
+- So the private model gets built by default, and it's invisible, because it
+  looks exactly like ordinary local variables. There is nothing in the code that
+  says "this block is a second theory of an object defined in another file."
+- The cost compounds where it's least visible. Two models agree on the day
+  they're written, and every subsequent change is a chance for them to diverge
+  silently.
+- Close on the same shape as the other two. A developer who learns *give each
+  class a single responsibility* has a rule about naming. A developer who learns
+  *put the operation where the invariants live* has a rule about ownership, and
+  can tell when a function is quietly maintaining a copy of someone else's data
+  model.
+
+{/* Series: Code Critical. This is the general principle, the ECS post is the
+    memory-layout instance, the immutability post is the change-detection
+    instance. Still open: whether this reads as the hub the other two point at,
+    and whether three posts sharing one thesis want a shared framing or just
+    want to be three posts. */}

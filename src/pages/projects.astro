@@ -1,0 +1,97 @@
+---
+import { getCollection, render } from 'astro:content';
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import Prose from '@/components/Prose.astro';
+
+const projects = (
+  await getCollection('projects', ({ data }) => import.meta.env.DEV || !data.draft)
+).sort((a, b) => a.data.order - b.data.order);
+
+const rendered = await Promise.all(
+  projects.map(async (project) => ({
+    ...project,
+    Content: (await render(project)).Content,
+  })),
+);
+
+const statusStyles: Record<string, string> = {
+  active: 'bg-accent-100 text-accent-900 dark:bg-accent-900/30 dark:text-accent-200',
+  shipped: 'bg-gold-100 text-gold-900 dark:bg-gold-900/30 dark:text-gold-200',
+  paused: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
+  exploring: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
+};
+---
+
+<BaseLayout title="Projects" description="Things I'm building.">
+  <div class="container-prose">
+    <header class="pb-4">
+      <hr class="rule-gold mb-8" />
+      <h1 class="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl dark:text-slate-100">
+        Projects
+      </h1>
+      <p class="mt-3 text-slate-600 dark:text-slate-400">
+        Things I'm building, in various states of done.
+      </p>
+    </header>
+
+    {rendered.length === 0 ? (
+      <p class="py-12 text-slate-500 dark:text-slate-400">
+        Nothing listed yet. Add an <code class="font-mono text-sm">.mdx</code> file to
+        <code class="font-mono text-sm">src/content/projects/</code>.
+      </p>
+    ) : (
+      <div class="divide-y divide-slate-200 border-t border-slate-200 dark:divide-slate-800 dark:border-slate-800">
+        {rendered.map(({ data, Content }) => (
+          <section class="py-8">
+            <div class="flex flex-wrap items-center gap-3">
+              <h2 class="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+                {data.name}
+              </h2>
+              <span
+                class:list={[
+                  'rounded-full px-2 py-0.5 font-mono text-xs font-medium',
+                  statusStyles[data.status],
+                ]}
+              >
+                {data.status}
+              </span>
+            </div>
+
+            <p class="mt-2 leading-relaxed text-slate-600 dark:text-slate-400">
+              {data.description}
+            </p>
+
+            {data.tech.length > 0 && (
+              <ul class="mt-3 flex flex-wrap gap-2">
+                {data.tech.map((t) => (
+                  <li class="tag-chip">{t}</li>
+                ))}
+              </ul>
+            )}
+
+            <div class="mt-4">
+              <Prose>
+                <Content />
+              </Prose>
+            </div>
+
+            {(data.repo || data.link) && (
+              <div class="mt-4 flex flex-wrap gap-4 text-sm">
+                {data.repo && (
+                  <a href={data.repo} class="text-accent-700 link-underline dark:text-accent-300">
+                    Source
+                  </a>
+                )}
+                {data.link && (
+                  <a href={data.link} class="text-accent-700 link-underline dark:text-accent-300">
+                    Visit
+                  </a>
+                )}
+              </div>
+            )}
+          </section>
+        ))}
+      </div>
+    )}
+  </div>
+</BaseLayout>

@@ -1,0 +1,296 @@
+---
+title: 'Immutability Is an Optimization, Not a Virtue'
+description: >-
+  React's own docs call it an optimization. It gets taught as the Right Way.
+  Teaching a rule without its reason produces people who follow the rule and
+  never learn the judgement, and the modern web is the bill for that.
+date: 2026-09-24
+area: 'engineering'
+tags: ['architecture', 'react', 'performance', 'data-oriented-design']
+series: 'Code Critical'
+draft: true
+---
+
+I learned React by building a tic-tac-toe board. It still exists, unchanged, in
+the repo behind this site. I left it there on purpose, because one line of it
+explains an argument I keep having.
+
+```tsx
+setGrid(grid.map((gd, i) => {
+    if (i === boxID)
+        return turnID;
+
+    return gd;
+}));
+```
+
+Nine cells. One of them changed. So I allocated a new array of nine.
+
+That is idiomatic React. It is, per the documentation, the *correct* way to
+write it. It is also the thing about modern web development I have the hardest
+time swallowing. It took me a while to work out that what bothered me wasn't the
+allocation, but the way immutability is presented as simply the "Right Way".
+
+That distinction sounds like pedantry. I don't think it is. A rule taught
+without its reason gets followed without judgement, and in this case the
+judgement is the entire skill.
+
+## What the allocation is actually buying
+
+My first assumption was that React compares my state references to work out what
+changed. That isn't it.
+
+React's default is blunter. State changes, React re-runs the component and
+everything below it, builds a fresh tree of elements, diffs that tree against
+the previous one, and mutates the DOM where they differ. Reconciliation operates
+on freshly-created output. It never consults your state references at all.
+
+What the references gate is whether any of that work *happens*. The docs are
+explicit:
+
+> If the new value you provide is identical to the current state, as determined
+> by an `Object.is` comparison, React will skip re-rendering the component and
+> its children. This is an optimization.
+
+The same mechanism shows up under `React.memo`, in `useMemo` and `useCallback`
+dependency arrays, and in context value identity. All of it asks one question:
+is this the same reference as last time? A "yes" is taken as proof that nothing
+changed.
+
+Which means mutation doesn't give you a subtly stale render. It gives you
+nothing at all:
+
+```js
+obj.x = 10;  // mutating the object in place
+setObj(obj); // does nothing
+```
+
+So immutability isn't buying change detection. It's buying the *right to skip
+work*: a cheap, sound proof that nothing a component depended on has changed.
+Every memoization in React rests on it.
+
+Note what that makes it. Immutability is the precondition. Deciding what work to
+skip is the actual job, and the precondition is worthless on its own. You can
+follow the rule perfectly and still re-render the entire tree on every
+keystroke, which is exactly what a great many applications do.
+
+## The same problem, answered differently
+
+Games ask the same thing. What can I skip? They answer it by marking instead of
+comparing. Mutate in place, set a dirty bit, process only what's flagged.
+
+The bookkeeping is cheap: a flag per tracked thing, nothing allocated on write,
+and it composes. Dirty propagates to dependents, you walk the dirty set, you
+clear it.
+
+{/* MEASUREMENTS - dirty bits in production, from the GPU upload path
+    Source: Trinyx docs/reference/Performance-Targets.md and
+    docs/math-and-determinism/Determinism.md. Measured 2026-05,
+    RelWithDebInfo. Intel Core Ultra 9 275HX / Ryzen 9 9950X, 32-64GB,
+    RTX 5070 Ti / RTX 4070, CachyOS and Windows 11. Tracy for frame timing.
+
+    Dirty bit array, 100K entities:   12.5KB, fits in L1
+    Bitplanes:                        5, one per field slab slot
+    OR-ing 4 frames:                  4 AVX2 passes of 1562 256-bit ops
+    Typical frame, 1 percent moving:  ~1,000 processed instead of 100,000
+    Scan:                             ctzll, one instruction per set bit
+    Render thread, 100K steady:       ~0.88ms (1133 FPS), driven almost
+                                      entirely by dirty-bit selective upload
+
+    "A flag per tracked thing" is 12.5KB for 100K entities, and that is the
+    whole reason it works: the entire change set fits in L1. The 1-percent
+    number is the most legible version of the argument. */}
+
+You do it this way because there isn't an alternative. Push the entity count
+into the tens of thousands, or the tick rate past a few hundred Hz, and
+replacing state wholesale every time something moves stops being a cost you can
+amortize away.
+
+The discipline it forces is real, too. You end up knowing precisely who writes
+to what and when, because nothing is protecting you if you don't. Immutability
+lets you be careless about ownership and stay correct, which is genuinely
+valuable, and also why the habit survives into codebases that can't afford it.
+
+Here's the part that's relevant to my complaint, though. Nobody teaches dirty
+flags as a virtue. There is no moral framing around them, no blog post calling
+them the Right Way, because a 16ms budget does the teaching and does it
+immediately. You learn the technique and the reason for the technique in the
+same lesson, since a technique whose reason you don't understand won't survive
+your next profiling session.
+
+## The copy I make every frame
+
+Having set that up as a clean opposition, I should admit that my own engine sits
+on the wrong side of it.
+
+Trinyx keeps a slab of temporal component data and copies the current frame
+forward on every loop, at 512Hz. I spent the last two sections arguing that
+copying state wholesale is the thing simulation code cannot afford, and my
+simulation copies its state five hundred times a second.
+
+So the dichotomy is false, and my own code is the counterexample. The axis was
+never copy versus mutate. It's what the copy is *for*.
+
+React copies to make change detection cheap: a fresh reference is a proof that
+something changed. The slab copies to make history addressable: frame T-6 still
+exists because a network correction is about to ask what the world looked like
+then, and rollback needs those old values to survive. The copy isn't overhead I
+tolerate. It's the product. Time travel is the feature, and a frame of history
+is the thing being bought.
+
+It is also, to be clear about it, an eager copy of everything. Once per logic
+tick, before any system runs, the previous frame's field data is copied forward
+into the next ring slot so that every write starts from the prior state. Not a
+clever incremental thing. A memcpy of the frame, fanned out across worker
+threads.
+
+{/* MEASUREMENTS - propagation cost
+    Source: Trinyx docs/reference/Performance-Targets.md and
+    docs/math-and-determinism/Determinism.md. Measured 2026-05,
+    RelWithDebInfo. Intel Core Ultra 9 275HX / Ryzen 9 9950X, 32-64GB,
+    RTX 5070 Ti / RTX 4070, CachyOS and Windows 11. Tracy for frame timing.
+
+    Frame budget at 512Hz:            1.95ms total
+      of which History Write:         0.2ms budgeted
+    Full logic frame, 100K entities,
+      no physics, WITH propagation:   ~0.3ms
+    PrePhysics alone, 100K:           ~0.1ms
+    Per-frame SaveSnapshot overhead:  <0.1ms
+
+    Temporal slab at 100K entities:
+      8-frame ring (minimum):         ~270MB
+      field data at rollback check:   ~34MB
+    ECS determinism:                  byte-perfect over a 34MB memcmp
+
+    So the whole-frame copy fits inside a 0.2ms line item on a 1.95ms budget,
+    and the measured logic frame including propagation is ~0.3ms. That is the
+    number to quote: not "copying is cheap" but "copying 100K entities forward
+    costs this much, and here is the budget it came out of."
+
+    The honest contrast with React is the allocation, not the copy. The ring is
+    pre-allocated, so a tick costs a memcpy and never an allocator call. */}
+
+Then the part that actually makes the point. The resimulation path is designed
+to switch strategy: instead of copying the frame, scatter-copy only the entities
+whose dirty bit is set, and leave everything else in the destination slot
+holding its original-timeline data.
+
+{/* ACCURACY - resolve before publishing.
+
+    TemporalComponentCache.h declares PropagateFrameResim with exactly this
+    behaviour documented on it. But Performance-Targets.md and Determinism.md
+    both say dirty propagation is "designed but not yet wired", and the resim
+    numbers below are full-resim numbers. Work out which is true in the current
+    build, then write this paragraph in the right tense. Do not publish a
+    designed path as a shipped one.
+
+    MEASUREMENTS - resimulation
+    Source: Trinyx docs/reference/Performance-Targets.md and
+    docs/math-and-determinism/Determinism.md. Measured 2026-05,
+    RelWithDebInfo. Intel Core Ultra 9 275HX / Ryzen 9 9950X, 32-64GB,
+    RTX 5070 Ti / RTX 4070, CachyOS and Windows 11. Tracy for frame timing.
+
+    Resim, 5 frames, 100K entities:   ~18ms  (full resim, no dirty propagation)
+    Resim, 12 frames, 100K:           ~28ms  (crosses 2 physics boundaries)
+    Jolt RestoreSnapshot:             <1ms   (7KB, 56 bodies, StateRecorderImpl)
+    Jolt determinism:                 byte-perfect, 7,436 bytes
+    Target:                           <5ms for a 128-frame resim
+    Expected gain from dirty prop:    10-100x when under 1 percent are touched
+
+    The target is <5ms and the measured full resim is ~18ms for 5 frames. That
+    gap is the argument for dirty propagation, so state it rather than hide
+    it. */}
+
+So the same engine, over the same data, uses both answers and picks by
+question. On the live path it wants a clean record of what the world was, so it
+copies everything. On the resim path it wants to redo the minimum, so it marks
+and copies the marked. Copy-everything and mark-what-changed were never rivals.
+They answer different questions, and anything doing prediction seriously needs
+both.
+
+{/* TODO: this is the strongest evidence in the post and it's your own code, so
+    it is worth being precise about which function does which and citing the
+    measured cost of each path. Keep the detail to what you're willing to
+    publish about the engine. */}
+
+## What I'm not claiming
+
+The workloads aren't comparable, and I'd rather say that myself than have it said
+to me.
+
+React state is kilobytes, mutated at the rate a human clicks a mouse. The
+allocation I opened this post with is nanoseconds against a frame budget
+dominated by layout and paint. Taken on its own, it's noise.
+
+The technique is also well-chosen for what it does. Immutability buys things I'd
+actually want:
+
+- **Undo and time-travel debugging** fall out for free when old states are still
+  intact. Redux DevTools is the obvious case.
+- **Abandonable renders.** Concurrent rendering can interrupt a render and throw
+  the attempt away. If components read from a mutable store mid-interruption,
+  two of them can observe different values for the same thing. That's *tearing*.
+  `useSyncExternalStore` exists specifically to close that hole for external
+  stores. An immutable snapshot can't change underneath a render that has
+  already started.
+- **Structural sharing.** A spread or a `map` copies one level and shares every
+  unchanged child by reference, so a "copy" is usually far cheaper than the
+  syntax suggests.
+
+So this isn't an argument that React chose wrong, and conceding the allocation
+isn't conceding the complaint. The allocation was never the problem. The problem
+is that a precondition gets taught as though it were the whole job.
+
+## The bill
+
+I want to be careful about how much I pin on this, because the modern web is
+slow for many reasons and most of them aren't allocation churn. Megabytes of
+JavaScript, third-party scripts, hydration, request waterfalls, and unoptimised
+images do far more damage than any `map` ever will.
+
+But some of it is exactly this. The rule travels and the reason doesn't, so you
+get applications that are scrupulously immutable and still re-render half the
+tree when a single field changes, because nobody ever explained that the copying
+was in service of *skipping work* and that skipping the work was the point. The
+correctness ritual gets performed. The optimization it was supposed to enable
+never happens.
+
+The clearest evidence that this is a real problem, and not me being annoyed on
+the internet, is that the React team built a compiler about it. React Compiler
+reached 1.0 in October 2025 and ships stable in Next.js 16, and what it does is
+insert the `useMemo`, `useCallback`, and `memo` calls you were supposed to write
+yourself. It exists because hand-written memoization is a skill that most
+people, most of the time, do not reliably have. That's not a tooling gap. That's
+a teaching gap with a build step in front of it.
+
+Signals come at the same problem from the other side. In Solid, Vue, Svelte 5's
+runes, and Angular, the framework records which computations read which values,
+then marks those readers dirty on write. That is a dirty-flag system, and not by
+analogy: the implementations use exactly that vocabulary, with push invalidation
+and lazy pull recomputation. The win is granularity, invalidating one value's
+readers rather than a component subtree, which means the framework makes the
+skip-work decision instead of asking you to.
+
+Worth separating two things I had been running together, though. Granularity and
+mutability are different axes. Solid's signals compare with referential equality
+by default and you generally still *replace* values; it's Vue's `reactive`
+proxies and Svelte 5's runes that let you write a mutation and have it tracked.
+And a signal isn't one bit. It's a node holding a value, an equality function,
+and a subscriber list, allocated per atom. Cheaper than a subtree re-render, not
+free.
+
+Which brings me to the thing I actually object to. Fine-grained reactivity isn't
+some new discovery arriving to unseat immutability. Knockout shipped in 2010,
+three years before React. Meteor's Tracker, Vue, and MobX all ran alongside it.
+There were always two reasonable answers to *how do I avoid recomputing what
+didn't change*, replace-and-compare and mutate-and-mark, and React's answer won
+mindshare rather than winning an argument.
+
+Both are valid. That's not me hedging at the end of a rant, it's the whole point.
+If one approach were universally correct, teaching it as the Right Way would
+simply be accurate. It's precisely because both are legitimate engineering
+choices, with different costs and different domains, that presenting one as a
+moral property is a category error. And it's an expensive one, because a
+developer who learns *immutability is correct* has learned a rule, while a
+developer who learns *immutability is what lets me prove nothing changed* has
+learned a tool they can reason with, argue with, and occasionally decide against.

@@ -1,0 +1,74 @@
+---
+title: 'Stop Reporting FPS'
+description: >-
+  Frames per second is a throughput number answering a question players never
+  ask. The one they feel is how long a keypress takes to become light, and it
+  is measurable.
+date: 2026-09-25
+area: 'engineering'
+tags: ['performance', 'latency', 'architecture']
+series: 'Design Space'
+draft: true
+---
+
+{/* STUB. Contrarian but constructive, so Design Space rather than Code
+    Critical. The argument is "here is a better metric and here is how to
+    instrument it", not "everyone else is wrong". */}
+
+{/* TODO: open on the mismatch. FPS is throughput. What a player feels is
+    latency from input to photon, and the two come apart badly: a high average
+    with a long tail feels worse than a lower steady rate. */}
+
+## The pipeline
+
+| Stage | Avg |
+| --- | --- |
+| Input sampling | 0.5ms |
+| Logic processing | 1.95ms (one 512Hz tick) |
+| Render frame | 0.7ms |
+| GPU execution and VSync | 16.6ms at 60Hz |
+| **Best case total** | **18.75ms** |
+
+{/* TODO: the table's own lesson is that the display dominates. Four engine
+    stages add up to roughly 3.2ms against 16.6ms of waiting for the monitor.
+    Confront that directly: most of what an engine controls is a small
+    fraction of what the player experiences, which is exactly why the fraction
+    that IS controllable deserves measuring properly. */}
+
+{/* MEASUREMENTS - input to photon
+    Source: Trinyx docs/reference/Performance-Targets.md. Measured 2026-05,
+    RelWithDebInfo. Intel Core Ultra 9 275HX / Ryzen 9 9950X, 32-64GB,
+    RTX 5070 Ti / RTX 4070, CachyOS and Windows 11. Tracy for frame timing.
+
+    240Hz monitor, steady state       ~9ms
+    Under heavy physics load
+      (205K entities settling)        ~14.3ms
+    Target                            <16ms (one frame at 60Hz)
+
+    Supporting numbers:
+      Sentinel input polling          1000Hz, lock-free double buffered
+      Logic tick                      512Hz
+      Render, 100K steady             ~0.88ms (1133 FPS)
+*/}
+
+## Measuring it honestly
+
+{/* TODO
+      - Timestamp when the input event arrives, not at frame start. A perf
+        counter recorded in the frame header, carried through with the frame
+        it influenced.
+      - Report the tail, not the mean. The 14.3ms-under-load number is the one
+        that matters; the 9ms is the one that flatters.
+      - Decoupling input polling from the sim rate is what makes the
+        measurement meaningful: sampling at 1000Hz against a 512Hz sim bounds
+        input age by the sampler rather than the tick.
+      - What this cannot measure is the display pipeline past submit. Say so. */}
+
+## Why decoupled rates help
+
+{/* TODO: three independent rates and what each optimises.
+      1000Hz input sampling, so input is fresh when the tick reads it.
+      512Hz logic, so simulation error stays small.
+      Variable render, so the display is fed without dragging the sim.
+    Plus GPU-side interpolation between two slabs, which is what lets the
+    render rate float free of the logic rate without visible stepping. */}

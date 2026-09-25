@@ -1,0 +1,70 @@
+---
+title: 'Which Half of My Reflection Does C++26 Delete'
+description: >-
+  Hand-rolled reflection has a shelf life. Sorting the parts static reflection
+  replaces from the parts that were design turns out to be a useful way to find
+  out what you actually built.
+date: 2026-09-25
+area: 'engineering'
+tags: ['cpp', 'reflection', 'metaprogramming', 'architecture']
+series: 'Design Space'
+draft: true
+---
+
+{/* STUB. The framing is what keeps this from dating badly: not "here is my
+    reflection system" but "here is which of it was a workaround". */}
+
+{/* TODO: open on the shelf life honestly. This was built because C++ has no
+    static reflection and C++26 is bringing it, so the interesting question is
+    not whether the system is clever but which parts stop being necessary. */}
+
+## What gets deleted
+
+{/* TODO
+      - Field enumeration by macro: listing member names so they can be
+        stringified and paired with member pointers. Static reflection does
+        this directly.
+      - Offset extraction by default-constructing a temporary and subtracting
+        pointers. Replaced by reflecting the members.
+      - The name macros, the field-count plumbing, the stringification.
+
+    One detail worth keeping because it is a genuine trap: the offset
+    extraction only works because registration instantiates the scalar width,
+    whose mask base is specialised to zero size. Widen it and you would be
+    executing AVX2 during static initialisation, before any CPU feature check
+    could run. Exactly the kind of load-bearing accident static reflection
+    removes. */}
+
+## What does not get deleted
+
+{/* TODO. The part that turns out to be design rather than workaround.
+
+      - Schema composition. A derived entity's schema is the base's schema
+        extended with its own members, as a compile-time tuple, with a replace
+        operation for overriding a base component in place. Static reflection
+        enumerates members; it does not give you an algebra over schemas.
+      - Tier and system-group tagging. The declaration says where data lives
+        and who reads it, which no compiler can infer.
+      - Width parameterisation, so one component source compiles scalar or
+        wide.
+
+    This is the thesis: reflection was the boring half. */}
+
+## Self-registration and the identifiers problem
+
+{/* TODO. Good standalone section, and a real tradeoff with three positions.
+
+      - Static-init registration gives zero-config: define a component, it
+        registers itself, nothing central to update.
+      - The cost is that IDs come from a counter incremented in static-init
+        order, which is link-order dependent and unspecified across
+        translation units.
+      - Fine until an ID leaves the process. Class IDs travel in spawn packets;
+        component IDs index the slab layout, so snapshots and replays inherit
+        the same fragility.
+      - Position three: bake the registry to an asset at build time. Stable IDs
+        across machines and faster load, at the price of an artifact that can
+        go stale against the source.
+
+    Having walked all three is the article. State plainly which one is in the
+    build at time of writing. */}

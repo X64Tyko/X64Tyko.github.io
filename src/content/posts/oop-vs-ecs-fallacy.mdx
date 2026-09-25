@@ -1,0 +1,75 @@
+---
+title: 'The OOP vs. ECS Fallacy: Memory-First Pragmatism Over Architectural Dogma'
+description: >-
+  OOP and ECS get argued about as if they were competing religions. They're
+  competing memory layout strategies, and the hardware doesn't care which
+  keyword you typed.
+date: 2026-09-24
+area: 'engineering'
+tags: ['architecture', 'cpp', 'ecs', 'performance']
+series: 'Code Critical'
+draft: true
+---
+
+{/*
+  Seeded from 02_Writing/Articles/Ideas/Hub - The OOP vs ECS Fallacy.md.
+  This is your outline, not a finished draft. The section bodies still need
+  writing. Set `draft: false` when it's ready.
+*/}
+
+## The binary
+
+The industry keeps reaching for a binary: object-oriented programming and entity
+component systems as mutually exclusive religions rather than complementary
+memory layout strategies.
+
+## The core problem
+
+**OOP dogma.** Deep inheritance hierarchies (`AActor` → `APawn` → `ACharacter`),
+heavy pointer indirection, cache invalidation, bloated object headers, and
+virtual dispatch overhead paid every frame across non-contiguous allocations.
+
+**ECS dogma.** Purity-first data-oriented design, where every gameplay
+interaction gets modelled as a decoupled component query. This takes a real
+performance hit on entity mutation (archetype thrashing), plus system
+scheduling overhead and a drop in developer velocity as domain encapsulation
+disappears.
+
+**The misconception underneath both.** That ECS is inherently faster because of
+some magic data parallelism, which ignores what structural edits cost.
+
+## Hardware realities first
+
+L1/L2/L3 cache hits are driven by contiguous memory layout and predictable
+access patterns. Structure-of-arrays versus array-of-structures is the decision
+that moves the number. Whether you spelled it `struct` or `class` is not.
+
+{/* TODO: benchmark. SoA vs AoS traversal over N entities, cache miss counts. */}
+
+## Mutation costs and archetype fragmentation
+
+Adding or removing a component at runtime forces reallocation and structural
+copies across archetype chunks. Pure ECS excels at homogeneous static batching:
+100k projectiles, particles, anything uniform. It degrades under heterogeneous,
+stateful game logic: complex status effects, ability attribute aggregation,
+anything where entities differ from each other and change shape at runtime.
+
+{/* TODO: numbers from a real structural-change-heavy workload. */}
+
+## The pragmatic hybrid
+
+1. Wrap contiguous SoA allocations behind clean OOP handles and interfaces. The
+   layout is data-oriented; the API is not hostile to work with.
+2. Use ECS for high-volume, homogeneous pipelines: particles, swarms, anything
+   that feeds a compute shader.
+3. Use OOP and state machines for low-volume, high-complexity domain entities:
+   player controllers, behaviour trees, system orchestration.
+
+## Related
+
+- [ECS Is a Memory Layout, Not an Architecture](/blog/ecs-is-a-memory-layout/),
+  on what goes wrong when the layout is treated as the architecture.
+- [Three Kinds of ECS Storage, and Why](/blog/three-kinds-of-ecs-storage/), for
+  the storage models laid out side by side without the argument.
+- [UObject and Mass Entity Are Answering Different Questions](/blog/uobject-vs-mass-entity/),
+  for the same binary inside one engine.

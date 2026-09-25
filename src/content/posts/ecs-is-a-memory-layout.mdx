@@ -1,0 +1,209 @@
+---
+title: 'ECS Is a Memory Layout, Not an Architecture'
+description: >-
+  ECS buys you contiguous iteration over homogeneous data. Adopted as an
+  identity instead of a tool, it reliably produces engines with worse cache
+  behaviour than the OOP they replaced.
+date: 2026-09-24
+area: 'engineering'
+tags: ['architecture', 'ecs', 'cpp', 'performance', 'data-oriented-design']
+series: 'Code Critical'
+draft: true
+---
+
+{/*
+  SKELETON. Structure mirrors "Immutability Is an Optimization, Not a Virtue":
+  what the technique actually buys, precondition vs. job, the failure modes,
+  what I'm not claiming, the bill.
+
+  Source constraint: examples from Trinyx or public engines (Flecs, Unity DOTS,
+  Bevy, EnTT, Mass Entity docs). No production war stories from work, and no
+  GAS or Verse.
+
+  TONE WARNING on the opening: keep the subject anonymous and keep it
+  sympathetic. This is a pattern, not a person, and a post that reads as a
+  callout of a named streamer both punches down and weakens the argument by
+  making it personal. "Someone I watch" is enough.
+*/}
+
+I watched someone convert their game to ECS recently. Entities became IDs,
+behaviour moved out of objects and into systems, and component data moved into
+storage. The storage was a dictionary keyed by entity ID, and the systems looked
+each component up by ID while processing.
+
+That refactor bought real things. It did not buy the thing ECS is usually
+adopted for, and there is a good chance it cost frame time against the objects
+it replaced.
+
+Consider what a dictionary lookup is, per component, per entity, per system.
+Hash the key, index a bucket array, follow that into an entry array, compare the
+key, possibly walk a collision chain. Two dependent memory accesses at minimum,
+each one a cache miss candidate. Each entry also carries a hash code and a next
+index alongside the key, so a small component struct arrives with more
+bookkeeping than payload, and a cache line holds fewer of them than a plain
+array would.
+{/* TODO: verify the entry layout for the runtime version you cite, and measure
+    rather than reasoning about byte counts. Claim the number you measured. */}
+
+Then the part that actually decides it. Two dictionaries do not iterate in
+lockstep. A system that needs Position and Velocity walks one of them and
+hash-looks-up the other, once per element. At three components that is two
+random lookups for every unit of work. The design it replaced chased a single
+pointer per object and then found every field it needed on the same cache line.
+
+If the components are classes rather than structs, and they usually are after a
+refactor from objects that were already classes, it compounds. Hash lookup, then
+a pointer chase to wherever the collector put that instance, plus allocation
+churn on top.
+
+What the refactor did buy is worth stating plainly, because it isn't nothing:
+composition without touching a class hierarchy, optional data for free since an
+entity lacking a component is simply absent from the map, and systems that can
+be tested in isolation. That's the ergonomic half of ECS, and it's a legitimate
+reason to want ECS.
+
+It just isn't the half that makes anything faster. The precondition was
+satisfied. The job was never attempted.
+
+## What ECS is actually buying
+
+{/* TODO */}
+
+One thing, and it's a hardware thing: contiguous iteration over homogeneous
+data. Components live in arrays, the hot loop walks them front to back, the
+prefetcher predicts you correctly, and you amortise the whole arrangement over
+a large N.
+
+Everything else in the usual pitch is either downstream of that or unrelated to
+it. Composition over inheritance is an ergonomic story. Decoupling is a
+scheduling story. Neither is why the frame time dropped.
+
+## The precondition and the job
+
+{/* TODO. Load-bearing section, same role as "immutability is the precondition,
+    deciding what to skip is the job". The dictionary opening is already a
+    worked example of exactly this, so refer back to it. */}
+
+Storing data in components keyed by entity is the precondition. The job is
+arranging access patterns so each hot loop touches the data it needs and nothing
+else.
+
+You can satisfy the precondition completely and get nothing. A fully compliant
+ECS with six single-field components read by one system has six cache streams
+and worse locality than the struct it replaced. The rule was followed. The
+reason was not understood.
+
+## Where it goes wrong
+
+{/* TODO: pick four or five and cut the rest. A catalogue of eight reads as a
+    listicle; four with numbers behind them reads as evidence. */}
+
+**Hash maps as component storage.** The opening case. The structure that
+actually does this job is a sparse set: an index array from entity ID to a dense
+slot, plus packed component and entity arrays alongside it. You keep O(1)
+lookup and get contiguous iteration, which is what EnTT and Flecs are built on.
+A dictionary is a sparse set with the contiguity removed and overhead added. The
+storage models are laid out side by side in
+[Three Kinds of ECS Storage](/blog/three-kinds-of-ecs-storage/).
+{/* TODO: worth a diagram. Sparse index -> dense array, next to the bucket and
+    entry array layout, same scale. */}
+
+**Structural change as a state machine.** Add and remove components to represent
+state, because composition is taught as the idiom, and pay an archetype move per
+transition. Tutorials demonstrate this with a handful of entities where the
+memcpy is invisible. What the move actually costs, measured, is
+[its own post](/blog/archetype-thrashing/).
+{/* TODO: measure. Structural change vs. setting a flag on a component you
+    already own, at a realistic entity count. */}
+
+**Over-decomposition.** One component per field, on the theory that smaller is
+purer. Each additional component a system reads is another stream competing for
+a limited number of hardware prefetch streams. The fix is unfashionable:
+components should be sized to how they are *read*, not to how the domain
+decomposes.
+
+**Relationships.** Parent/child, owner, target. Any of these becomes an ID
+lookup, which is random access into another array. Hierarchies and graphs are
+where linear iteration stops being the thing you are doing, and a transform
+hierarchy in ECS is pointer chasing with extra indirection.
+
+**Small N.** Query matching, archetype resolution, and scheduling are fixed
+costs amortised over the entities you touch. Below some count the machinery
+costs more than the work. Systems that iterate a dozen entities are pure
+overhead wearing an architecture.
+
+{/* MEASUREMENTS - the amortisation curve, if you want to show it
+    Source: Trinyx docs/reference/Performance-Targets.md. Measured 2026-05,
+    RelWithDebInfo. Intel Core Ultra 9 275HX / Ryzen 9 9950X, 32-64GB,
+    RTX 5070 Ti / RTX 4070, CachyOS and Windows 11. Tracy for frame timing.
+
+      10K    0.01ms
+      50K    0.08ms
+      100K   ~0.1ms
+      1M     ~1.0ms
+
+    Useful here because it shows the cost is close to linear in N once N is
+    large, which is exactly why the fixed overhead dominates when N is small.
+    The dictionary opening is the other end of the same curve. */}
+
+**Comprehension.** Reconstructing the state of one entity means reading twenty
+arrays. Encapsulation was load-bearing for understanding a system, not only for
+correctness, and giving it up has a debugging cost that no benchmark reports.
+
+**Invisible ordering coupling.** Systems are described as decoupled and then
+depend on execution order, which is nowhere in their signatures. It gets worse
+the moment scheduling goes parallel.
+
+**SoA without SIMD.** Paying the layout's ergonomic cost and never writing a
+vectorised loop, so the benefit is left on the table. Keeping both, without
+giving up the API, is [its own post](/blog/soa-and-simd-in-oop/).
+{/* TODO: probably belongs to the SoA/SIMD spoke instead. Decide. */}
+
+## What I'm not claiming
+
+{/* TODO. Concede honestly and early, as in the immutability post. Conceding
+    that ECS is right for its workloads is not conceding the complaint. */}
+
+Where ECS earns its keep: high-N homogeneous pipelines, particles, projectiles,
+swarms, anything already shaped like a compute dispatch. Parallel scheduling
+over disjoint component sets. Layouts that hand off to the GPU without a
+translation step.
+
+And the dictionary case is genuinely fine at low entity counts. If a game is
+tracking hundreds of things rather than hundreds of thousands, none of the
+above is measurable, the ergonomic wins are the entire point, and picking the
+simple data structure is correct engineering. The question that decides it is
+what N is, and whether the frame is CPU bound at all. That question is the one
+worth asking out loud, and it usually isn't.
+
+The complaint is not that ECS is slow or wrong. It's that the reason it works is
+specific, and a technique adopted without its reason gets applied where the
+reason doesn't hold.
+
+## The bill
+
+{/* TODO. Parallel to the immutability post's ending: the cost of teaching a
+    rule without its reason. Land on the pedagogy, not on a winner. */}
+
+Points to hit:
+
+- Conversions that measured slower than the code they replaced, where the
+  post-mortem blames the implementation rather than the fit.
+- "Is this data-oriented?" asked in review in place of "what does this loop
+  touch?". The first has an answer you can perform. The second requires knowing
+  the machine.
+- Nobody teaches when *not* to. The literature is adoption guides. The decision
+  procedure for whether a workload is even shaped like the problem ECS solves is
+  mostly absent, which is why the dictionary version happens: every tutorial
+  covers entities, components and systems, and almost none of them covers
+  storage and traversal, which are the two parts that actually carry the
+  benefit. Layout alone doesn't save you. A perfect SoA arrangement, read in
+  gameplay order instead of memory order, performs like the AoS it replaced.
+- Close on the same shape as the immutability piece: a developer who learns
+  *ECS is the modern architecture* has a slogan. A developer who learns *SoA
+  lets me walk 100k of these without a cache miss* has a tool, and can tell when
+  they are holding the wrong one.
+
+{/* TODO: this is in the Code Critical series. Separate question still open:
+    how it relates to the OOP vs ECS hub planned elsewhere, which covers
+    overlapping ground. */}

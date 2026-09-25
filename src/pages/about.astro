@@ -1,0 +1,43 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import Prose from '@/components/Prose.astro';
+import { site } from '@/data/site';
+---
+
+<BaseLayout title="About" description={`About ${site.realName}.`}>
+  <div class="container-prose">
+    <header class="pb-8">
+      <hr class="rule-gold mb-8" />
+      <h1 class="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl dark:text-slate-100">
+        About
+      </h1>
+    </header>
+
+    <Prose>
+      {/* TODO: flesh this out. The first line is wired to site.realName. */}
+      <p>
+        I'm {site.realName}, a gameplay systems engineer. I work on engine
+        architecture, gameplay systems, and the kind of performance problems
+        that only show up at scale.
+      </p>
+      <p>
+        This site is where I write things down, mostly so I stop
+        re-deriving the same conclusions, occasionally because someone else might
+        find them useful.
+      </p>
+
+      <h2>What I write about</h2>
+      <ul>
+        <li>Engine architecture and data-oriented design</li>
+        <li>Gameplay systems, networking, and determinism</li>
+        <li>Performance-minded C++</li>
+      </ul>
+
+      <h2>Elsewhere</h2>
+      <p>
+        The footer has the current list. <a href="/contact/">Contact</a> if you
+        want to reach me directly.
+      </p>
+    </Prose>
+  </div>
+</BaseLayout>

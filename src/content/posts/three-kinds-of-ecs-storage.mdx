@@ -1,0 +1,243 @@
+---
+title: 'Three Kinds of ECS Storage, and Why'
+description: >-
+  Most comparisons treat ECS as a two-way choice between sparse sets and
+  archetypes. There are more than two, the differences are in storage rather
+  than in philosophy, and the tradeoffs are measurable.
+date: 2026-09-25
+area: 'engineering'
+tags: ['ecs', 'architecture', 'performance', 'data-oriented-design', 'cpp']
+series: 'Design Space'
+seriesOrder: 1
+draft: true
+---
+
+{/*
+  STUB. Design Space register: map the options and their tradeoffs, no salt.
+
+  THE HOOK, and the thing to get right. The two-camp framing (sparse set vs.
+  archetype) really is the default: there is a 2025 CGVC paper titled
+  "Run-time Performance Comparison of Sparse-set and Archetype
+  Entity-Component Systems" that compares exactly those two.
+
+  But Sander Mertens' ECS FAQ, which is the reference everyone cites, lists
+  FOUR: archetype, sparse set, bitset, reactive. So "three, and the third is
+  mine" gets corrected in the first comment unless the scope is explicit.
+
+  Decide which framing:
+    (a) "Three kinds of STORAGE" - archetype / sparse set / bitset, with
+        reactive scoped out as a query-maintenance strategy rather than a
+        storage one. Defensible, and it keeps the number at three.
+    (b) "Four kinds, and a fifth I built" - lose the neat three, gain the
+        position of having read the literature.
+  Current title assumes (a).
+*/}
+
+{/* TODO: open by establishing the two-camp default before breaking it. The
+    CGVC paper title is the cleanest evidence that it's the default. */}
+
+## Sparse set
+
+{/* TODO */}
+
+Each component type owns a sparse array keyed by entity id plus a dense packed
+array of the components themselves. Add and remove are cheap. A query iterates
+the smallest component set and tests each candidate for the others.
+
+Used by EnTT and Shipyard.
+
+## Archetype
+
+{/* TODO */}
+
+Entities are grouped into tables by their exact component set, so a query
+resolves to a list of matching tables and iteration inside a table is a
+straight walk. Query overhead trends to zero once the set of tables stabilises.
+Changing an entity's composition moves it between tables.
+
+Used by Flecs, Unity DOTS, Unreal Mass, Bevy, Legion, Hecs.
+
+## Bitset
+
+{/* TODO */}
+
+One array per component type, indexed directly by entity id, with a bitset
+recording which entities actually have it. Simple, and wasteful in proportion
+to how sparse the component is.
+
+Used by EntityX and Specs.
+
+## The measured tradeoff
+
+{/* TODO: cite the CGVC comparison and reproduce or extend it. The headline
+    finding matches the argument in the Code Critical ECS post: sparse sets
+    make composition changes cheap and scale worse on iteration, archetypes
+    win large-scale iteration and charge for structural change. */}
+
+## What the two-camp framing misses
+
+{/* TODO. Two points, and the second is the good one.
+
+    1. Reactive is a fourth approach in the FAQ, but it answers a different
+       question: how a system collects matching entities, not how components
+       are stored. Worth saying explicitly so the omission is a choice.
+
+    2. Bevy already ships archetype tables AND optional per-component sparse
+       set storage. Hybrids are in production, so the binary is false on its
+       own terms before anyone introduces a new design. */}
+
+## A fourth shape: columns below the component
+
+Every model above stops at the same granularity. The component is the atom of
+storage. A sparse set holds an array of `Transform`. An archetype table holds a
+column of `Transform`. A bitset design holds an array of `Transform`. In all
+three, a `Transform` containing nine floats is laid out as nine consecutive
+floats per entity, so reading one field pulls the other eight through cache with
+it.
+
+Trinyx splits below that. A component declares its fields, and the chunk stores
+one column per field: all the `PositionX` values contiguous, then all the
+`PositionY` values, rather than an array of whole transforms.
+
+```
+component-granular (every ECS above)
+  [ x0 y0 z0 | x1 y1 z1 | x2 y2 z2 | ... ]
+
+field-granular (Trinyx)
+  [ x0 x1 x2 ... ]  [ y0 y1 y2 ... ]  [ z0 z1 z2 ... ]
+```
+
+{/* TODO: this is the claim the post exists to make, so state the mechanism
+    concretely: the declared schema, per-field OffsetInChunk, and that the
+    archetype chunking is unchanged. The novelty is the granularity, not the
+    chunking. */}
+
+### This is columnar storage
+
+Which is not a new idea, just an unusual place to find it. Analytical databases
+have flattened structs into per-field columns for years for exactly this reason:
+Arrow's `StructArray` stores a struct as child arrays, one per field, so a query
+touching one field reads only that field.
+
+{/* TODO: name the prior art before a reader does, because the technique is
+    well established and only its absence from ECS is interesting:
+      - Apache Arrow StructArray, the closest conceptual match
+      - Zig's MultiArrayList, per-field arrays via comptime reflection
+      - Rust's soa_derive, per-field Vecs by macro
+      - ISPC's soa<N> qualifier, which transforms a struct type in the language
+    The honest framing is that field-level SoA is ordinary outside ECS, and
+    that no mainstream ECS reaches for it. That absence is the article. */}
+
+Worth being precise about one word. The field list is *declared*, via a macro
+that names the fields, not introspected by the compiler. Calling it reflection
+invites the obvious reply. C++26 static reflection is what removes the macro.
+
+### Uniform 32-bit fields are the enabling constraint
+
+Every field is a 32-bit value: float, int32, uint32. That reads as an
+unfinished feature list until you notice what it buys. Uniform field width is
+what lets a single lane count serve every column. If fields varied in width,
+lanes-per-field would vary too, and there would be no single answer to how wide
+a batch is.
+
+{/* TODO: say that this is why the engine is fixed-point rather than a
+    consequence of being fixed-point. The constraint is load-bearing. */}
+
+### The objection I have to answer
+
+{/* TODO. This is the section that decides whether the post is credible, and
+    it is the argument from the Code Critical ECS post pointed at this design.
+
+    Over-decomposition is a failure mode I named there: each extra array a
+    system reads is another stream competing for a limited number of hardware
+    prefetch streams. Field-granular columns are that taken to the limit. A
+    system reading a whole transform touches nine columns where an archetype
+    ECS touches one.
+
+    The defense is real but it has to be made explicitly: the win is
+    proportional to how narrow the read is, and every hot path here is a
+    narrow-slice SIMD kernel. Say it plainly, with the measurement, including
+    the case where this layout loses. A post that only shows the wins is an
+    advert.
+
+    Link the ECS post here. Being the person who published the objection first
+    is worth more than hoping nobody makes it. */}
+
+Two things in the implementation are the actual answer, and both deserve
+spelling out rather than being left for a reader to find.
+
+**The slab is field-major across archetypes, not archetype-major.** Each field
+gets one allocation zone spanning every archetype that declares it, so scanning
+`PositionX` for every entity that has one is a single contiguous run. An
+archetype ECS cannot do that: it visits chunk by chunk, because its columns are
+grouped by archetype first. This inverts the grouping.
+
+**Fields are partitioned by which system consumes them.** Render, dual,
+physics and logic data occupy separate regions of the slab, arranged so that a
+system's working set is adjacent rather than scattered across the frame. The
+physics range in particular is laid out as one dense scan with no gap between
+the partitions it spans.
+
+{/* TODO: this pair is the answer to the stream-count objection, so make it
+    concrete with the actual layout and a measurement. The claim to support is
+    that field granularity costs you streams only if the fields a system reads
+    are scattered, and that consumer partitioning is what stops them being
+    scattered. */}
+
+{/* MEASUREMENTS - scaling and layout
+    Source: Trinyx docs/reference/Performance-Targets.md. Measured 2026-05,
+    RelWithDebInfo. Intel Core Ultra 9 275HX / Ryzen 9 9950X, 32-64GB,
+    RTX 5070 Ti / RTX 4070, CachyOS and Windows 11. Tracy for frame timing.
+
+    PrePhysics by entity count (512Hz logic):
+      10K                             0.01ms
+      50K                             0.08ms
+      100K                            ~0.1ms   (primary target, achieved)
+      1M                              ~1.0ms   (stress test only)
+
+    Per-entity hot data:
+      CTransform, 9 fields            36B
+      CVelocity,  3 fields            24B
+      CJoltBody,  4 fields            ~16B
+
+    Render, no frustum culling yet:
+      100K                            ~0.88ms (1133 FPS)
+      205K steady                     ~1.5ms  (660 FPS)
+      205K settling                   ~3.1ms  (320 FPS)
+
+    CAVEAT, and lead with it rather than burying it. The steady-state numbers
+    have settling spikes behind them:
+      25-layer pyramid (5,526)        ~1ms steady,   14.67ms settling
+      100K + pyramid                  0.73ms steady, 18.74ms settling
+      205K                            ~1.4ms steady, ~28ms settling
+      Jolt step, 25-layer             <1ms steady,   ~12ms settling
+
+    A reader told "1.4ms" who later finds a 28ms spike discounts the whole
+    post. A reader told "1.4ms steady, 28ms settling, here is why" does not. */}
+
+### Why not AoSoA
+
+{/* TODO. The strongest technical question against the design, so answer it
+    rather than omitting it.
+
+    Blocks of lane-width, interleaved:
+      [ x0..x7 y0..y7 z0..z7 | x8..x15 y8..y15 z8..z15 | ... ]
+
+    Same aligned loads, and one entity's fields stay within a few cache lines,
+    which matters for scattered single-entity access and for whole-frame copies
+    into the history slab. ISPC's soa<N> is exactly this. If there's a reason
+    pure SoA beats it here, that reason is the most interesting paragraph in
+    the post. If there isn't, better to find out before publishing.
+
+    The candidate answer is field-major-across-archetypes. AoSoA blocks are
+    necessarily grouped by whatever owns the block, so they give back the
+    cross-archetype contiguity that this layout exists to provide. Worth
+    checking whether that is the real reason or a rationalisation, because it
+    is the difference between a design decision and a happy accident. */}
+
+## Related
+
+- [ECS Is a Memory Layout, Not an Architecture](/blog/ecs-is-a-memory-layout/),
+  for what goes wrong when storage is treated as an afterthought.
+- [What a Structural Change Actually Costs](/blog/archetype-thrashing/), for the
+  composition-change side in depth.

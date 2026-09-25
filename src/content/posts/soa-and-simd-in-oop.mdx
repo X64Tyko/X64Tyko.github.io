@@ -1,0 +1,33 @@
+---
+title: 'SoA and SIMD Behind an Object Interface'
+description: >-
+  Structure-of-arrays layout and vectorised loops do not require giving up a
+  clean API. Here is how to keep the handle and the ergonomics while the data
+  underneath stays contiguous.
+date: 2026-09-25
+area: 'engineering'
+tags: ['cpp', 'performance', 'simd', 'data-oriented-design']
+series: 'Design Space'
+draft: true
+---
+
+{/*
+  STUB. Design Space register: constructive throughout.
+
+  Promoted from the "SoA without SIMD" bullet in the Code Critical ECS post.
+  Shrink that bullet to a link once this exists.
+*/}
+
+{/* TODO: sections to write
+
+  - The layout. AoS vs SoA, and what each costs on a partial-field read.
+  - The facade. Handles and views over SoA storage, so call sites read like
+    objects while the loop stays linear. This is the part people assume is
+    impossible.
+  - Vectorising the loop. Alignment, tail handling, and why auto-vectorisation
+    usually will not do it for you.
+  - What it costs: aliasing rules, debug-build ergonomics, the fact that a
+    view is easy to invalidate.
+  - Measurement, with the scalar SoA version as the baseline rather than the
+    AoS version, so the SIMD win is isolated from the layout win.
+*/}

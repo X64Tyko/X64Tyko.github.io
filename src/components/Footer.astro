@@ -1,0 +1,37 @@
+---
+import { site, socials } from '@/data/site';
+
+const year = new Date().getFullYear();
+---
+
+<footer class="border-t border-slate-200 py-10 dark:border-slate-800">
+  <div
+    class="container-prose flex flex-col gap-4 text-sm text-slate-500
+           sm:flex-row sm:items-center sm:justify-between dark:text-slate-400"
+  >
+    <p>&copy; {year} {site.realName}</p>
+
+    <nav aria-label="Elsewhere" class="flex flex-wrap items-center gap-x-5 gap-y-2">
+      {socials.map((s) => (
+        <a
+          href={s.href}
+          rel="me noopener"
+          class="transition-colors hover:text-slate-900 dark:hover:text-slate-100"
+        >
+          {s.label}
+        </a>
+      ))}
+      {site.email && (
+        <a
+          href={`mailto:${site.email}`}
+          class="transition-colors hover:text-slate-900 dark:hover:text-slate-100"
+        >
+          Email
+        </a>
+      )}
+      <a href="/rss.xml" class="transition-colors hover:text-slate-900 dark:hover:text-slate-100">
+        RSS
+      </a>
+    </nav>
+  </div>
+</footer>

@@ -1,0 +1,59 @@
+---
+title: 'Two Object Models in One Engine'
+description: >-
+  A hundred thousand identical things and a dozen bespoke ones are different
+  problems. Running both models side by side is less complicated than forcing
+  either one to cover the other.
+date: 2026-09-25
+area: 'engineering'
+tags: ['architecture', 'ecs', 'cpp', 'design']
+series: 'Design Space'
+draft: true
+---
+
+{/* STUB. The constructive counterpart to the OOP-versus-ECS critique: not an
+    argument that the binary is false, a description of what running both
+    actually looks like. */}
+
+{/* TODO: open on the two populations. Zombies, bullets and particles are
+    homogeneous and numerous; the player, the game mode and the camera are
+    singular and full of bespoke logic. One storage model serving both is the
+    compromise nobody asked for. */}
+
+## The split
+
+{/* TODO
+      - Entities: raw ECS data, no bespoke logic, swept in wide SIMD batches.
+      - Constructs: singular OOP objects that own views into ECS data, hold
+        their own logic, and compose through owned members.
+      - The seam is a view type that creates a backing ECS entity, hydrates
+        field cursors, and re-hydrates on frame advance and defrag. Be concrete
+        about who owns what, because that is where this either holds together
+        or leaks. */}
+
+## Ticks without virtuals
+
+{/* TODO. The self-contained C++20 piece, and the most reusable idea here.
+
+      - Tick methods are detected at compile time by concepts. Implement
+        PrePhysics and you get a PrePhysics tick; leave it out and nothing is
+        registered and nothing is called.
+      - Dispatch is type-erased function pointers sorted by tick group, so
+        there is no virtual call and no per-object branch on "does this
+        override it".
+      - Contrast with the usual approach: a virtual with an empty default,
+        costing a call per object per frame to do nothing.
+
+    This section could be its own post if it grows. */}
+
+## Where the line actually falls
+
+{/* TODO: the honest part. The split is only clean if you can tell which
+    population something belongs to, and some things genuinely sit between.
+    Work an example that was hard to place and say how it resolved, or that it
+    is still wrong. */}
+
+## Related
+
+- [The OOP vs. ECS Fallacy](/blog/oop-vs-ecs-fallacy/), for why the binary is
+  false in the first place.

@@ -1,0 +1,51 @@
+---
+title: Rebuilding this site
+description: >-
+  This domain used to host a React tutorial with a half-finished tic-tac-toe
+  board on it. Here's what replaced it, and why.
+date: 2026-09-24
+area: 'engineering'
+tags: ['meta', 'astro']
+draft: true
+---
+
+This site started as a scratch repo for learning React and TypeScript. It was
+the Vite starter template with a tic-tac-toe board bolted onto the counter
+button. Once I felt comfortable with React and moved on it sat unused.
+This update aims to remedy that.
+
+## What it is now
+
+An [Astro](https://astro.build) site. Posts are MDX files in
+`src/content/posts/`, validated against a schema at build time, so a malformed
+date or a missing title fails the build instead of rendering an empty page.
+
+The parts that mattered when picking it:
+
+- **Static output.** A prose page ships as HTML. No framework runtime loads
+  unless a page actually needs one.
+- **MDX with components.** Posts are Markdown, but a post that needs an
+  interactive diagram can import a React component and render it inline.
+- **Feeds and metadata are built in.** RSS, sitemap, and per-page Open Graph
+  tags come from the content schema rather than being maintained by hand.
+
+## What the React detour was worth
+
+I kept the tic-tac-toe board. Nothing on the site links to it any more, but it's
+still in the repo, unchanged, missing `key` props and win detection and all.
+
+I left it because one line of it turned out to be the most interesting thing I
+got out of learning React. Changing a single cell of a nine-cell board means
+allocating a new array of nine, and working out *why* that's the correct way to
+write it is what convinced me that immutability in web frameworks is an
+optimization wearing the costume of a moral principle. That
+argument got long enough to need [its own
+post](/blog/immutability-is-not-a-virtue/).
+
+## What I'm planning to write about
+
+Engine architecture and data-oriented design, mostly. The first real series is
+on the OOP-versus-ECS argument and why I think it's usually framed as a choice
+between paradigms when it's actually a question about memory layout.
+
+{/* TODO: delete this post, or rewrite it in your own voice, then set draft: false */}
