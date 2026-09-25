@@ -8,7 +8,7 @@ date: 2026-09-24
 area: 'engineering'
 tags: ['architecture', 'react', 'performance', 'data-oriented-design']
 series: 'Code Critical'
-draft: true
+draft: false
 ---
 
 I learned React by building a tic-tac-toe board. It still exists, unchanged, in
@@ -120,8 +120,7 @@ your next profiling session.
 
 ## The copy I make every frame
 
-Having set that up as a clean opposition, I should admit that my own engine sits
-on the wrong side of it.
+I should admit however, my own engine sits on the wrong side of that.
 
 Trinyx keeps a slab of temporal component data and copies the current frame
 forward on every loop, at 512Hz. I spent the last two sections arguing that
@@ -135,8 +134,7 @@ React copies to make change detection cheap: a fresh reference is a proof that
 something changed. The slab copies to make history addressable: frame T-6 still
 exists because a network correction is about to ask what the world looked like
 then, and rollback needs those old values to survive. The copy isn't overhead I
-tolerate. It's the product. Time travel is the feature, and a frame of history
-is the thing being bought.
+tolerate. It's the product. Time travel is the feature.
 
 It is also, to be clear about it, an eager copy of everything. Once per logic
 tick, before any system runs, the previous frame's field data is copied forward
@@ -170,8 +168,7 @@ threads.
     The honest contrast with React is the allocation, not the copy. The ring is
     pre-allocated, so a tick costs a memcpy and never an allocator call. */}
 
-Then the part that actually makes the point. The resimulation path is designed
-to switch strategy: instead of copying the frame, scatter-copy only the entities
+The resimulation path is designed to switch strategy: instead of copying the frame, scatter-copy only the entities
 whose dirty bit is set, and leave everything else in the destination slot
 holding its original-timeline data.
 
@@ -215,8 +212,7 @@ both.
 
 ## What I'm not claiming
 
-The workloads aren't comparable, and I'd rather say that myself than have it said
-to me.
+The workloads aren't comparable, and I don't mean to say that they are.
 
 React state is kilobytes, mutated at the rate a human clicks a mouse. The
 allocation I opened this post with is nanoseconds against a frame budget
@@ -239,7 +235,8 @@ actually want:
 
 So this isn't an argument that React chose wrong, and conceding the allocation
 isn't conceding the complaint. The allocation was never the problem. The problem
-is that a precondition gets taught as though it were the whole job.
+is that a precondition gets taught as though it were the whole job, and "It's too
+small to matter" is only an argument while it's small.
 
 ## The bill
 
@@ -255,8 +252,8 @@ was in service of *skipping work* and that skipping the work was the point. The
 correctness ritual gets performed. The optimization it was supposed to enable
 never happens.
 
-The clearest evidence that this is a real problem, and not me being annoyed on
-the internet, is that the React team built a compiler about it. React Compiler
+The clearest evidence that this is a real problem, not just an old man who
+yells at clouds, is that the React team built a compiler about it. React Compiler
 reached 1.0 in October 2025 and ships stable in Next.js 16, and what it does is
 insert the `useMemo`, `useCallback`, and `memo` calls you were supposed to write
 yourself. It exists because hand-written memoization is a skill that most
@@ -271,8 +268,8 @@ and lazy pull recomputation. The win is granularity, invalidating one value's
 readers rather than a component subtree, which means the framework makes the
 skip-work decision instead of asking you to.
 
-Worth separating two things I had been running together, though. Granularity and
-mutability are different axes. Solid's signals compare with referential equality
+Two things worth keeping apart, and I had been running them together.
+Granularity and mutability are different axes. Solid's signals compare with referential equality
 by default and you generally still *replace* values; it's Vue's `reactive`
 proxies and Svelte 5's runes that let you write a mutation and have it tracked.
 And a signal isn't one bit. It's a node holding a value, an equality function,
@@ -286,7 +283,7 @@ There were always two reasonable answers to *how do I avoid recomputing what
 didn't change*, replace-and-compare and mutate-and-mark, and React's answer won
 mindshare rather than winning an argument.
 
-Both are valid. That's not me hedging at the end of a rant, it's the whole point.
+Both are valid. That's the whole point.
 If one approach were universally correct, teaching it as the Right Way would
 simply be accurate. It's precisely because both are legitimate engineering
 choices, with different costs and different domains, that presenting one as a
