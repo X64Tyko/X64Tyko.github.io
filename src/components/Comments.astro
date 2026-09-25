@@ -5,10 +5,14 @@ import { comments, commentsConfigured } from '@/data/comments';
 // set with CSS. It has to be told, once on load and again whenever the site
 // theme changes. ThemeToggle dispatches `themechange` for exactly that.
 //
-// The loader below is `is:inline` on purpose. A normal <script> would be
-// hoisted and bundled into every article page whether or not comments are
-// configured, which means shipping dead JavaScript to pages that are otherwise
-// pure HTML. Inline keeps it inside the conditional where it belongs.
+// The loader is `is:inline` on purpose. A normal <script> would be hoisted and
+// bundled into every article page whether or not comments are configured,
+// which means shipping dead JavaScript to pages that are otherwise pure HTML.
+// Inline keeps it inside the conditional where it belongs.
+//
+// `define:vars` declares the consts below before this body runs, and the
+// content of an inline script is raw text: no JSX expression wrapper, or it
+// gets emitted literally and silently does nothing.
 ---
 
 {
@@ -37,11 +41,9 @@ import { comments, commentsConfigured } from '@/data/comments';
           lang: comments.lang,
         }}
       >
-        {`
-        (() => {
-          const container = document.getElementById('giscus-container');
-          if (!container) return;
+        const container = document.getElementById('giscus-container');
 
+        if (container) {
           const isDark = () => document.documentElement.classList.contains('dark');
           const themeFor = () => (isDark() ? 'dark' : 'light');
 
@@ -65,14 +67,14 @@ import { comments, commentsConfigured } from '@/data/comments';
 
           document.addEventListener('themechange', () => {
             const frame = document.querySelector('iframe.giscus-frame');
-            if (!frame || !frame.contentWindow) return;
-            frame.contentWindow.postMessage(
-              { giscus: { setConfig: { theme: themeFor() } } },
-              'https://giscus.app',
-            );
+            if (frame && frame.contentWindow) {
+              frame.contentWindow.postMessage(
+                { giscus: { setConfig: { theme: themeFor() } } },
+                'https://giscus.app',
+              );
+            }
           });
-        })();
-        `}
+        }
       </script>
     </section>
   ) : (
