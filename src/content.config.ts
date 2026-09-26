@@ -20,9 +20,11 @@ const posts = defineCollection({
      * Which track this belongs to. Engineering is the hard-systems writing;
      * games covers design, reviews and devlog material.
      */
-    area: z.enum(['engineering', 'games']).default('engineering'),
+    area: z.enum(['engineering', 'games', 'industry']).default('engineering'),
     /** Groups a hub article with its spokes. */
     series: z.string().optional(),
+    /** A cluster within a series, e.g. the rail shooter pieces inside Design Dissection. */
+    subseries: z.string().optional(),
     /** Pins reading order within a series. Falls back to date, then title. */
     seriesOrder: z.number().optional(),
   }),
@@ -33,7 +35,7 @@ const projects = defineCollection({
   schema: z.object({
     name: z.string(),
     description: z.string(),
-    area: z.enum(['engineering', 'games']).default('engineering'),
+    area: z.enum(['engineering', 'games', 'industry']).default('engineering'),
     /** Lower sorts first on the projects page. */
     order: z.number().default(99),
     status: z.enum(['active', 'paused', 'shipped', 'exploring']).default('active'),

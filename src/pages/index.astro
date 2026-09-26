@@ -2,10 +2,19 @@
 import BaseLayout from '@/layouts/BaseLayout.astro';
 import PostCard from '@/components/PostCard.astro';
 import { getVisiblePosts, byNewest } from '@/lib/posts';
-import { site } from '@/data/site';
+import { site, startHere } from '@/data/site';
 import { tracks } from '@/data/tracks';
 
-const latest = (await getVisiblePosts()).sort(byNewest).slice(0, 3);
+const published = await getVisiblePosts();
+
+// The "what this site is" post gets its own slot rather than competing with
+// everything else in Latest, where it would scroll away as posts accumulate.
+const intro = startHere ? published.find((p) => p.id === startHere) : undefined;
+
+const latest = published
+  .filter((p) => p.id !== intro?.id)
+  .sort(byNewest)
+  .slice(0, 3);
 ---
 
 <BaseLayout>
@@ -23,15 +32,40 @@ const latest = (await getVisiblePosts()).sort(byNewest).slice(0, 3);
       </p>
     </section>
 
-    <section class="grid gap-4 sm:grid-cols-2">
+    {intro && (
+      <a
+        href={`/blog/${intro.id}/`}
+        class="group mb-10 block rounded-lg border border-gold-300/70 bg-gold-50/60 p-5
+               transition-colors hover:border-gold-500 dark:border-gold-700/50
+               dark:bg-gold-900/15 dark:hover:border-gold-500"
+      >
+        <p class="font-mono text-xs uppercase tracking-wider text-gold-700 dark:text-gold-400">
+          Start here
+        </p>
+        <p class="mt-2 font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+          <span
+            class="bg-gradient-to-r from-gold-400 to-accent-400 bg-[length:0%_2px]
+                   bg-bottom bg-no-repeat transition-[background-size] duration-300
+                   group-hover:bg-[length:100%_2px]"
+          >
+            {intro.data.title}
+          </span>
+        </p>
+        <p class="mt-1 leading-relaxed text-slate-600 dark:text-slate-400">
+          {intro.data.description}
+        </p>
+      </a>
+    )}
+
+    <section class="grid gap-4 sm:grid-cols-3">
       {
         tracks.map((track) => (
           <a
             href={track.href}
-            class="group rounded-lg border border-slate-200 p-6 transition-colors
+            class="group rounded-lg border border-slate-200 p-5 transition-colors
                    hover:border-gold-400 dark:border-slate-800 dark:hover:border-gold-500"
           >
-            <h2 class="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+            <h2 class="font-semibold tracking-tight text-slate-900 dark:text-slate-100">
               <span
                 class="bg-gradient-to-r from-gold-400 to-accent-400 bg-[length:0%_2px]
                        bg-bottom bg-no-repeat transition-[background-size] duration-300
@@ -40,7 +74,7 @@ const latest = (await getVisiblePosts()).sort(byNewest).slice(0, 3);
                 {track.label}
               </span>
             </h2>
-            <p class="mt-2 leading-relaxed text-slate-600 dark:text-slate-400">
+            <p class="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
               {track.tagline}
             </p>
           </a>

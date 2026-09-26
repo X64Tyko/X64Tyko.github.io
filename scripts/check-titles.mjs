@@ -1,8 +1,9 @@
 // Comment threads are keyed on og:title, which is the bare article title, so
 // two articles sharing a title would silently share a comment thread. This
 // turns that convention into a build failure instead of a discipline problem.
-import { readdirSync, readFileSync } from 'node:fs';
+import { readdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { parseFrontmatter } from './frontmatter.mjs';
 
 const dirs = ['src/content/posts', 'src/content/reviews'];
 const seen = new Map();
@@ -18,14 +19,10 @@ for (const dir of dirs) {
 
   for (const file of files) {
     const path = join(dir, file);
-    const frontmatter = readFileSync(path, 'utf8').split(/^---$/m)[1] ?? '';
-    const match = frontmatter.match(/^title:\s*(.+?)\s*$/m);
-    if (!match) continue;
+    const { title } = parseFrontmatter(path);
+    if (!title) continue;
 
-    // Strip one layer of matching quotes; leave the rest as authored.
-    const title = match[1].replace(/^(['"])(.*)\1$/, '$2').trim();
     const key = title.toLowerCase();
-
     if (seen.has(key)) clashes.push({ title, a: seen.get(key), b: path });
     else seen.set(key, path);
   }

@@ -6,6 +6,7 @@ import Prose from '@/components/Prose.astro';
 import FormattedDate from '@/components/FormattedDate.astro';
 import { getAllPosts, getSeriesContext } from '@/lib/posts';
 import Comments from '@/components/Comments.astro';
+import { slugify } from '@/lib/slug';
 
 export const getStaticPaths = (async () => {
   // Drafts are built as unlisted pages: they carry `noindex`, stay out of the
@@ -66,20 +67,42 @@ const toc = headings.filter((h) => h.depth === 2);
 
       {seriesCtx && (
         <p class="mt-4 text-sm text-slate-500 dark:text-slate-400">
-          Part {seriesCtx.part} of {seriesCtx.total} in
-          <a
-            href={seriesCtx.href}
-            class="font-medium text-accent-700 link-underline dark:text-accent-300"
-          >
-            {seriesCtx.name}
-          </a>
+          {seriesCtx.subseries ? (
+            <>
+              Part {seriesCtx.subseries.part} of {seriesCtx.subseries.total} in{' '}
+              <span class="font-medium text-slate-700 dark:text-slate-200">
+                {seriesCtx.subseries.name}
+              </span>
+              , part of{' '}
+              <a
+                href={seriesCtx.href}
+                class="font-medium text-accent-700 link-underline dark:text-accent-300"
+              >
+                {seriesCtx.name}
+              </a>
+            </>
+          ) : (
+            <>
+              Part {seriesCtx.part} of {seriesCtx.total} in{' '}
+              <a
+                href={seriesCtx.href}
+                class="font-medium text-accent-700 link-underline dark:text-accent-300"
+              >
+                {seriesCtx.name}
+              </a>
+            </>
+          )}
         </p>
       )}
 
       {tags.length > 0 && (
         <ul class="mt-4 flex flex-wrap gap-2">
           {tags.map((tag) => (
-            <li class="tag-chip">{tag}</li>
+            <li>
+              <a href={`/tags/${slugify(tag)}/`} class="tag-chip hover:border-gold-500">
+                {tag}
+              </a>
+            </li>
           ))}
         </ul>
       )}

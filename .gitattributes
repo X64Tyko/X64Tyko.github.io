@@ -1,0 +1,4 @@
+# Keep line endings consistent in the repo. Mixed CRLF and LF broke the
+# frontmatter tooling once: in JS "\r" is a line terminator, so a CRLF file
+# parses as empty under regexes that assume LF.
+* text=auto eol=lf

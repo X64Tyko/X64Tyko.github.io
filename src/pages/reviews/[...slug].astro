@@ -6,6 +6,7 @@ import Prose from '@/components/Prose.astro';
 import FormattedDate from '@/components/FormattedDate.astro';
 import { overallScore, formatScore } from '@/lib/reviews';
 import Comments from '@/components/Comments.astro';
+import { slugify } from '@/lib/slug';
 
 export const getStaticPaths = (async () => {
   const reviews = await getCollection(
@@ -103,7 +104,11 @@ const facts = [
       {d.tags.length > 0 && (
         <ul class="mt-4 flex flex-wrap gap-2">
           {d.tags.map((tag) => (
-            <li class="tag-chip">{tag}</li>
+            <li>
+              <a href={`/tags/${slugify(tag)}/`} class="tag-chip hover:border-gold-500">
+                {tag}
+              </a>
+            </li>
           ))}
         </ul>
       )}

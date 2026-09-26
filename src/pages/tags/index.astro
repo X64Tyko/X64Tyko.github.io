@@ -1,0 +1,47 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import { getTags } from '@/lib/tags';
+
+const tags = await getTags();
+const total = tags.reduce((n, t) => n + t.items.length, 0);
+---
+
+<BaseLayout
+  title="Tags"
+  description="Everything on the site, grouped by subject."
+>
+  <div class="container-prose">
+    <header class="pb-8">
+      <hr class="rule-gold mb-8" />
+      <h1 class="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl dark:text-slate-100">
+        Tags
+      </h1>
+      <p class="mt-3 text-slate-600 dark:text-slate-400">
+        {tags.length === 0
+          ? 'Nothing tagged yet.'
+          : `${tags.length} tags across ${total} taggings. Largest first.`}
+      </p>
+    </header>
+
+    {tags.length > 0 && (
+      <ul class="flex flex-wrap gap-2">
+        {tags.map((tag) => (
+          <li>
+            <a
+              href={`/tags/${tag.slug}/`}
+              class="inline-flex items-center gap-2 rounded-full border border-gold-300/70
+                     bg-gold-50 px-3 py-1 font-mono text-sm text-gold-900 transition-colors
+                     hover:border-gold-500 dark:border-gold-700/50 dark:bg-gold-900/20
+                     dark:text-gold-200 dark:hover:border-gold-500"
+            >
+              {tag.name}
+              <span class="text-xs text-gold-700/70 dark:text-gold-300/60">
+                {tag.items.length}
+              </span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    )}
+  </div>
+</BaseLayout>

@@ -8,6 +8,7 @@
     "build": "astro check && node scripts/check-titles.mjs && astro build",
     "preview": "astro preview",
     "check": "astro check && node scripts/check-titles.mjs",
+    "content": "node scripts/content.mjs",
     "astro": "astro"
   },
   "dependencies": {

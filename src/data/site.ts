@@ -21,6 +21,13 @@ export const site = {
   email: null as string | null,
 } as const;
 
+/**
+ * The post that explains what this site is, pinned on the home page so a
+ * first-time visitor finds it instead of scrolling past it in Latest.
+ * Set to null to remove the slot.
+ */
+export const startHere: string | null = 'rebuilding-this-site';
+
 export type SocialLink = { label: string; href: string };
 
 /** Rendered in the footer and on the contact page, in order. */
@@ -35,6 +42,7 @@ export const socials: SocialLink[] = [
 export const nav = [
   { label: 'Engineering', href: '/engineering/' },
   { label: 'Games', href: '/games/' },
+  { label: 'Industry', href: '/industry/' },
   { label: 'About', href: '/about/' },
   { label: 'Contact', href: '/contact/' },
 ] as const;

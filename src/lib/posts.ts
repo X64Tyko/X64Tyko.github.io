@@ -1,4 +1,6 @@
 import { getCollection, type CollectionEntry } from 'astro:content';
+import type { AreaId } from '@/data/tracks';
+import { slugify } from '@/lib/slug';
 
 export type Post = CollectionEntry<'posts'>;
 
@@ -20,7 +22,7 @@ export async function getVisiblePosts(): Promise<Post[]> {
 }
 
 /** Posts in one track, newest first. */
-export async function getPostsByArea(area: 'engineering' | 'games'): Promise<Post[]> {
+export async function getPostsByArea(area: AreaId): Promise<Post[]> {
   return (await getVisiblePosts())
     .filter((p) => p.data.area === area)
     .sort(byNewest);
@@ -43,13 +45,7 @@ export const bySeriesOrder = (a: Post, b: Post) =>
   a.data.title.localeCompare(b.data.title);
 
 /** "Code Critical" -> "code-critical" */
-export function seriesSlug(name: string): string {
-  return name
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-}
+export const seriesSlug = slugify;
 
 /**
  * Every series and the posts in it, in reading order.
@@ -82,6 +78,8 @@ export interface SeriesContext {
   total: number;
   prev: Post | null;
   next: Post | null;
+  /** Set when the post belongs to a cluster inside the series. */
+  subseries?: { name: string; part: number; total: number };
 }
 
 /** Where `post` sits in its series, or null if it isn't in one. */
@@ -95,12 +93,19 @@ export async function getSeriesContext(post: Post): Promise<SeriesContext | null
   const i = siblings.findIndex((p) => p.id === post.id);
   if (i === -1) return null;
 
+  const sub = post.data.subseries;
+  const cluster = sub ? siblings.filter((p) => p.data.subseries === sub) : siblings;
+  const j = cluster.findIndex((p) => p.id === post.id);
+
   return {
     name,
     href: `/series/${seriesSlug(name)}/`,
     part: i + 1,
     total: siblings.length,
-    prev: siblings[i - 1] ?? null,
-    next: siblings[i + 1] ?? null,
+    // Prev/next walk the cluster when there is one: reading order inside a
+    // sub-series matters more than position in the series as a whole.
+    prev: cluster[j - 1] ?? null,
+    next: cluster[j + 1] ?? null,
+    subseries: sub && j !== -1 ? { name: sub, part: j + 1, total: cluster.length } : undefined,
   };
 }
