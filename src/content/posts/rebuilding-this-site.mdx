@@ -26,15 +26,14 @@ Writing fits in those pieces. A paragraph is something I can actually finish. I'
 hoping this is something I can keep up with more consistently than the fractured
 development time I actually get.
 
-It also pins down what I thought at the time. Opinions change quietly. You shift,
+It also serves as a sort of personal experiment. Opinions change quietly. You shift,
 your memory shifts with you, and you end up sure you always thought the current
-thing. There's nothing to learn from that.
-
-Writing it down stops the quiet part. It's version control for opinions, and I
-can diff it against myself later.
+thing. There's little to learn from that. Writing it down stops the change drifting
+without notice. It's version control for opinions, and I can diff it against myself later.
 
 That's part of why I kept the tic-tac-toe board. The downside is obvious: I'll be
-wrong in public, with a date on it, and it's all indexed. I think that's fine. If
+wrong in public, with a date on it, and it's all indexed. I think that's fine, even
+potentially important for making sure I grow from previously held wrong or poor opinions. If
 I'm not willing to write an opinion down, it's already a target for more internal
 critique before bringing it to public debate.
 
@@ -44,7 +43,8 @@ An [Astro](https://astro.build) site. Posts are MDX files in
 `src/content/posts/`, validated against a schema at build time, so a malformed
 date or a missing title fails the build instead of rendering an empty page.
 
-The parts that mattered when picking it:
+The parts that mattered when picking it instead of sticking with the old
+React/Vite setup:
 
 - **Static output.** A prose page ships as HTML. No framework runtime loads
   unless a page actually needs one.
@@ -55,6 +55,7 @@ The parts that mattered when picking it:
 
 ## What the React detour was worth
 
+Beyond the obvious "learning the basics of React" and "making a blog with it",
 I kept the tic-tac-toe board. Nothing on the site links to it any more, but it's
 still in the repo, unchanged, missing `key` props and win detection and all.
 
@@ -70,12 +71,12 @@ post](/blog/immutability-is-not-a-virtue/).
 
 Three rough areas, and the split will probably move.
 
-**Engineering.** Engine architecture and data-oriented design, mostly out of
-building my own engine. Two threads so far. Code Critical is hard looks at
-patterns that get repeated without their reasons, which is where the
-immutability post lives. Design Dissection is the other register: how a thing
-actually works and what it costs. Importantly, with the context to determine
-when the design is valuable or not.
+**Engineering.** Engine architecture and data-oriented design, partly out of
+building my own engine, partly out of being deep in the industry. Two threads
+so far. Code Critical is hard looks at patterns that get repeated without their
+reasons, which is where the immutability post lives. Design Dissection is the
+other register: how a thing actually works and what it costs. Importantly, with
+the context to determine when the design is valuable or not.
 
 **Games.** The same dissection pointed at design instead of code. Rail shooters
 first, because the fixed camera keeps getting written about as a limitation when
