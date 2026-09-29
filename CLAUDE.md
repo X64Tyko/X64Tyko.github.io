@@ -52,6 +52,30 @@ This is not the same as hedging. Take positions. Just take the position the
 evidence supports, at the confidence the evidence supports, and be specific
 about where that runs out.
 
+## How drafting works
+
+The mix varies by day and that is fine. Two modes:
+
+1. He supplies the points he wants to hit plus a loose structure, and an
+   assistant drafts from that.
+2. He drafts it himself.
+
+**The ideas and opinions are always his.** He does not concede thoughts or
+opinions to an assistant, ever. Suggesting a thesis, a framing or an angle is
+fine and often useful; deciding one is not. When a draft's argument starts
+belonging to the assistant rather than to him, that draft is wrong regardless of
+how well it reads.
+
+Corollary: when he corrects a framing, the correction is the position. Do not
+re-argue the version that was replaced.
+
+### The AI disclosure section is his
+
+The disclosure in "Rebuilding this site" is written by him, in his voice, with
+no assistant editing. Do not touch it, do not tidy it, do not normalise "A.I."
+to "AI". The spelling is deliberate emphasis in a section whose whole purpose is
+being explicit. If the wording needs to change, he changes it.
+
 ## Voice
 
 Things that are his and must not be "fixed":
